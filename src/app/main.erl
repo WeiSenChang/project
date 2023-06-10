@@ -1,17 +1,20 @@
-%% -*- coding: utf-8 -*-
+%% coding: utf-8
 %%%-------------------------------------------------------------------
 %%% @author weisenchang
 %%% @copyright (C) 2023, <COMPANY>
 %%% @doc
 %%%
 %%% @end
-%%% Created : 10. 6月 2023 10:35
+%%% Created : 27. 5月 2023 3:26
 %%%-------------------------------------------------------------------
+-module(main).
 -author("weisenchang").
 
--ifndef('common_HRL').
--define('common_HRL', true).
+-include("common.hrl").
 
+%% API
+-export([start/0]).
 
-
--endif.
+start() ->
+    application:start(server),
+    lib_server:start().
