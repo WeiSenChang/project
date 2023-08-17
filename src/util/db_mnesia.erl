@@ -9,7 +9,7 @@
 -export([
     init_db/0,
     all_keys/1,
-    read/2,
+    read/3,
     write/2,
     delete/2
 ]).
@@ -50,27 +50,26 @@ all_keys(Tab) ->
         _ -> []
     end.
 
-read(Tab, Key) ->
+read(Tab, Key, Def) ->
     F = fun() -> mnesia:read(Tab, Key, read) end,
     case mnesia:transaction(F) of
-        {atomic, [KeyValue]} -> KeyValue;
-        _ -> #key_value{key = Key, value = #{}}
+        {atomic, [#key_value{key = Key, value = Data}]} -> Data;
+        _ -> Def
     end.
 
-write(Tab, KeyValue) ->
-    F = fun() -> mnesia:write(Tab, KeyValue, write) end,
+write(Tab, Data) ->
+    F = fun() -> mnesia:write(Tab, Data, write) end,
     case mnesia:transaction(F) of
         {atomic, ok} -> ok;
         {aborted, {no_exists, Tab}} ->
-            Attr =
-            case lists:member(Tab, ?DB_GLOBAL_TAB_LIST) of
-                true -> disc_copies;
-                _ -> disc_only_copies
-            end,
+            Attr = case lists:member(Tab, ?DB_GLOBAL_TAB_LIST) of
+                       true -> disc_copies;
+                       _ -> disc_only_copies
+                   end,
             mnesia:create_table(Tab, [{Attr, [node()]}|?DB_OPTS]),
             mnesia:wait_for_tables([Tab], 1000),
             mnesia:transaction(F);
-        _ -> error
+        _Error -> ?WARNING("write error, tab: ~w, data: ~w, error: ~w", [Tab, Data, _Error])
     end.
 
 delete(Tab, Key) ->

@@ -25,8 +25,10 @@ login(Id) ->
         {ok, _Pid} -> ok;
         _Reason ->
             ?WARNING("role ~p login error ~p", [Id, _Reason]),
-            server_sup:delete_child(mod_role:get_process_name(Id)),
-            timer:sleep(100),
+            case logout(Id) of
+                ok -> skip;
+                _ -> server_sup:delete_child(mod_role:get_process_name(Id))
+            end,
             login(Id)
     end.
 
@@ -37,5 +39,5 @@ logout(Id) ->
             mod_role:stop(Id),
             server_sup:delete_child(mod_role:get_process_name(Id)),
             ok;
-        _Error -> ?WARNING("role ~p logout error: ~w", [Id, _Error])
+        _Error -> ?WARNING("role ~p logout error: ~w", [Id, _Error]), fail
     end.

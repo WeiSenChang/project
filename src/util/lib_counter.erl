@@ -5,6 +5,8 @@
 -include("common.hrl").
 -include("mnesia.hrl").
 
+-record(uid, {key = undefined, val = 0}).
+
 -define(COUNTER_ROLE_ID, role_id).
 -define(COUNTER_MAIL_ID, mail_id).
 
@@ -23,9 +25,7 @@ get_mail_id() ->
 
 %%%%%%%%%%%%%%%%%%%%
 get_counter_id(Key) ->
-    #key_value{value = KvMap} = db_mnesia:read(?DB_UID, Key),
-    Uid = maps:get(Key, KvMap, 0),
-    Uid1 = Uid + 1,
-    KvMap1 = maps:put(Key, Uid1, KvMap),
-    db_mnesia:write(?DB_UID, #key_value{key = Key, value = KvMap1}),
-    Uid1.
+    Uid = db_mnesia:read(?DB_UID, Key, #uid{key = Key}),
+    Val = Uid#uid.val + 1,
+    db_mnesia:write(?DB_UID, #key_value{key = Key, value = Uid#uid{val = Val}}),
+    Val.

@@ -56,7 +56,7 @@ stop(Id) ->
     {ok, State :: #mod_role_state{}} | {ok, State :: #mod_role_state{}, timeout() | hibernate} |
     {stop, Reason :: term()} | ignore).
 init([_RoleId]) ->
-    erlang:send_after(10 * 1000, self(), save),
+    erlang:send_after(60 * 1000, self(), save),
     {ok, #mod_role_state{}}.
 
 db_init(State, [Id]) ->
@@ -93,7 +93,7 @@ handle_cast(_Request, State = #mod_role_state{}) ->
     {noreply, NewState :: #mod_role_state{}, timeout() | hibernate} |
     {stop, Reason :: term(), NewState :: #mod_role_state{}}).
 handle_info(save, State = #mod_role_state{}) ->
-    erlang:send_after(10 * 1000, self(), save),
+    erlang:send_after(60 * 1000, self(), save),
     save_role_data(),
     {noreply, State};
 handle_info(_Info, State = #mod_role_state{}) ->

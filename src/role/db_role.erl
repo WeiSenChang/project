@@ -15,22 +15,14 @@
 ]).
 
 load_role(Id) ->
-    KeyValue = db_mnesia:read(?DB_ROLE, Id),
-    Role = role:key_value_to_role(KeyValue),
-    Role#role{id = Id}.
+    db_mnesia:read(?DB_ROLE, Id, #role{id = Id}).
 
 save_role(Role) ->
-    KeyValue = role:role_to_key_value(Role),
-    db_mnesia:write(?DB_ROLE, KeyValue).
+    db_mnesia:write(?DB_ROLE, #key_value{key = Role#role.id, value = Role}).
 
 load_player_account(Account) ->
-    KeyValue = db_mnesia:read(?DB_PLAYER_ACCOUNT, Account),
-    PlayerAccount = role:key_value_to_player_account(KeyValue),
-    IdList = maps:get(id_list, KeyValue#key_value.value, []),
-    RoleList = [load_role(Id) || Id <- IdList],
-    PlayerAccount#player_account{account = Account, role_list = RoleList ++ PlayerAccount#player_account.role_list}.
+    db_mnesia:read(?DB_PLAYER_ACCOUNT, Account, #player_account{account = Account}).
 
 save_player_account(PlayerAccount) ->
-    KeyValue = role:player_account_to_key_value(PlayerAccount),
-    db_mnesia:write(?DB_PLAYER_ACCOUNT, KeyValue).
+    db_mnesia:write(?DB_PLAYER_ACCOUNT, #key_value{key = PlayerAccount#player_account.account, value = PlayerAccount}).
 

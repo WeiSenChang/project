@@ -25,15 +25,13 @@
 put_role(Role, IsSave) ->
     RoleHandle = role_handle(),
     Ets = RoleHandle#role_handle.ets,
-    KeyValue = role:role_to_key_value(Role),
-    erlang:put(Ets, KeyValue),
+    erlang:put(Ets, Role),
     set_ets_cache(IsSave, Ets).
 
 get_role() ->
     RoleHandle = role_handle(),
     Ets = RoleHandle#role_handle.ets,
-    KeyValue = erlang:get(Ets),
-    role:key_value_to_role(KeyValue).
+    erlang:get(Ets).
 
 role_handle() ->
     #role_handle{

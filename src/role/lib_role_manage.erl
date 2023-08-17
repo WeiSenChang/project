@@ -47,7 +47,7 @@ notify_role_timer(Func) ->
     notify_role_timer(get_role_list(), Func).
 notify_role_timer([], _Func) ->
     ok;
-notify_role_timer([#key_value{key = Id}|T], Func) ->
+notify_role_timer([#role{id = Id}|T], Func) ->
     mod_server:async_apply(mod_role:get_pid(Id), Func, []),
     notify_role_timer(T, Func).
 
@@ -59,14 +59,13 @@ fetch_role_list(Pid, Fun, Args) ->
     mod_server:async_apply(Pid, Fun, [RoleList|Args]).
 
 insert_role(Role) ->
-    KeyValue = role:role_to_key_value(Role),
     RoleList = get_role_list(),
-    NewRoleList = lists:keystore(Role#role.id, #key_value.key, RoleList, KeyValue),
+    NewRoleList = lists:keystore(Role#role.id, #role.id, RoleList, Role),
     put_role_list(NewRoleList).
 
 remove_role(Id) ->
     RoleList = get_role_list(),
-    NewRoleList = lists:keydelete(Id, #key_value.key, RoleList),
+    NewRoleList = lists:keydelete(Id, #role.id, RoleList),
     put_role_list(NewRoleList).
 
 get_role_list() ->

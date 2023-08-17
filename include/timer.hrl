@@ -13,7 +13,7 @@
 ]).
 
 -define(NOTIFY_MIN_MODS, [
-    mod_role_manage
+%%    mod_role_manage
 ]).
 
 -endif.
