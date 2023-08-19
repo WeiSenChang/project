@@ -18,7 +18,7 @@ create(Account) ->
     db_role:save_role(Role),
     #player_account{role_list = RoleList} = PlayerAccount = db_role:load_player_account(Account),
     db_role:save_player_account(PlayerAccount#player_account{role_list = [Role|RoleList]}),
-    login(Id).
+    Id.
 
 login(Id) ->
     case server_sup:start_child(mod_role:get_process_name(Id), mod_role, transient, [Id]) of
@@ -35,7 +35,7 @@ login(Id) ->
 logout(Id) ->
     case mod_role:get_pid(Id) of
         Pid when is_pid(Pid) ->
-            lib_role_listen:listen_role_logout(Id),
+            mod_server:async_apply(Pid, fun mod_role:logout/0, []),
             mod_role:stop(Id),
             server_sup:delete_child(mod_role:get_process_name(Id)),
             ok;

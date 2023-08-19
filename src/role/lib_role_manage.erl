@@ -7,15 +7,13 @@
 
 %% API
 -export([
-    insert_role/1,
-    remove_role/1,
+    insert_online_role/1,
+    remove_online_role/1,
 
-    get_role_list/0,
-    put_role_list/1,
+    get_online_map/0,
+    put_online_map/1,
 
-    i/0,
-
-    fetch_role_list/3
+    i/0
 ]).
 
 -export([
@@ -44,35 +42,25 @@ zero() ->
     ok.
 
 notify_role_timer(Func) ->
-    notify_role_timer(get_role_list(), Func).
-notify_role_timer([], _Func) ->
-    ok;
-notify_role_timer([#role{id = Id}|T], Func) ->
-    mod_server:async_apply(mod_role:get_pid(Id), Func, []),
-    notify_role_timer(T, Func).
+    Fun = fun(Id, _) -> mod_server:async_apply(mod_role:get_pid(Id), Func, []) end,
+    maps:foreach(Fun, get_online_map()).
 
 i() ->
-    mod_server:sync_apply(mod_role_manage:get_pid(), fun lib_role_manage:get_role_list/0, []).
+    mod_server:sync_apply(mod_role_manage:get_pid(), fun lib_role_manage:get_online_map/0, []).
 
-fetch_role_list(Pid, Fun, Args) ->
-    RoleList = get_role_list(),
-    mod_server:async_apply(Pid, Fun, [RoleList|Args]).
+insert_online_role(Id) ->
+    OnlineMap = get_online_map(),
+    put_online_map(maps:put(Id, 1, OnlineMap)).
 
-insert_role(Role) ->
-    RoleList = get_role_list(),
-    NewRoleList = lists:keystore(Role#role.id, #role.id, RoleList, Role),
-    put_role_list(NewRoleList).
+remove_online_role(Id) ->
+    OnlineMap = get_online_map(),
+    put_online_map(maps:remove(Id, OnlineMap)).
 
-remove_role(Id) ->
-    RoleList = get_role_list(),
-    NewRoleList = lists:keydelete(Id, #role.id, RoleList),
-    put_role_list(NewRoleList).
-
-get_role_list() ->
-    case erlang:get(?ONLINE_ROLE_LIST) of
-        undefined -> [];
-        RoleList -> RoleList
+get_online_map() ->
+    case erlang:get(?ONLINE_MAP) of
+        undefined -> #{};
+        OnlineMap -> OnlineMap
     end.
 
-put_role_list(RoleList) ->
-    erlang:put(?ONLINE_ROLE_LIST, RoleList).
+put_online_map(OnlineMap) ->
+    erlang:put(?ONLINE_MAP, OnlineMap).

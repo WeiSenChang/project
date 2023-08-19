@@ -8,7 +8,7 @@
 -include("mnesia.hrl").
 
 %% API
--export([set_ets_cache/2]).
+-export([set_save_flag/2]).
 
 -export([
     put_role/2,
@@ -23,14 +23,12 @@
 ]).
 
 put_role(Role, IsSave) ->
-    RoleHandle = role_handle(),
-    Ets = RoleHandle#role_handle.ets,
+    #role_handle{ets = Ets} = role_handle(),
     erlang:put(Ets, Role),
-    set_ets_cache(IsSave, Ets).
+    set_save_flag(IsSave, Ets).
 
 get_role() ->
-    RoleHandle = role_handle(),
-    Ets = RoleHandle#role_handle.ets,
+    #role_handle{ets = Ets} = role_handle(),
     erlang:get(Ets).
 
 role_handle() ->
@@ -54,13 +52,14 @@ change_role_name(Id, Name) ->
 change_role_name(Name) ->
     Role = get_role(),
     NewRole = Role#role{name = Name},
-    put_role(NewRole, true).
+    put_role(NewRole, true),
+    lib_role_flag:put_show_flag(1).
 
 %%%%%%%%%%%%%
-set_ets_cache(IsSave, Ets) ->
+set_save_flag(IsSave, Ets) ->
     case IsSave of
         true ->
-            lib_role_flag:put_ets_cache_flag(Ets, 1);
+            lib_role_flag:put_save_flag(Ets, 1);
         _ ->
             ignore
     end.

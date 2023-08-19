@@ -1,5 +1,5 @@
 %% coding: utf-8
--module(db_mnesia).
+-module(lib_mnesia).
 -author("weisenchang").
 
 -include("common.hrl").

@@ -15,7 +15,7 @@
 -include("common.hrl").
 
 %% API
--export([get_process_name/1, start_link/1, get_pid/1, db_init/2, stop/1]).
+-export([get_process_name/1, start_link/1, get_pid/1, db_init/2, stop/1, logout/0]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2, terminate/2,
@@ -43,7 +43,6 @@ get_process_name(Id) ->
     erlang:list_to_atom(ProcessName).
 
 stop(Id) ->
-    save_role_data(),
     mod_server:sync_stop(get_pid(Id)).
 
 %%%===================================================================
@@ -57,6 +56,7 @@ stop(Id) ->
     {stop, Reason :: term()} | ignore).
 init([_RoleId]) ->
     erlang:send_after(60 * 1000, self(), save),
+    erlang:send_after(10 * 1000, self(), show),
     {ok, #mod_role_state{}}.
 
 db_init(State, [Id]) ->
@@ -96,6 +96,10 @@ handle_info(save, State = #mod_role_state{}) ->
     erlang:send_after(60 * 1000, self(), save),
     save_role_data(),
     {noreply, State};
+handle_info(show, State = #mod_role_state{}) ->
+    erlang:send_after(10 * 1000, self(), show),
+    lib_role_other:check_show_update(),
+    {noreply, State};
 handle_info(_Info, State = #mod_role_state{}) ->
     {noreply, State}.
 
@@ -128,10 +132,10 @@ save_role_data([]) ->
     ok;
 save_role_data([RoleHandle|T]) ->
     #role_handle{ets = Ets, get_func = GetFunc, save_func = SaveFunc} = RoleHandle,
-    Flag = lib_role_flag:get_ets_cache_flag(Ets),
+    Flag = lib_role_flag:get_save_flag(Ets),
     case Flag of
         1 ->
-            lib_role_flag:put_ets_cache_flag(Ets, 0),
+            lib_role_flag:put_save_flag(Ets, 0),
             Data = GetFunc(),
             SaveFunc(Data);
         _ -> ignore
@@ -145,3 +149,7 @@ load_role_data(RoleId) ->
             Data = LoadFunc(RoleId),
             PutFunc(Data, false)
         end, RoleHandles).
+
+logout() ->
+    lib_role_listen:listen_role_logout(),
+    save_role_data().

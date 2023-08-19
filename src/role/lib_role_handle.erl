@@ -11,5 +11,6 @@
 
 get_role_handles() ->
     [
-        lib_role:role_handle()
+        lib_role:role_handle(),
+        lib_role_other:role_other_handle()
     ].

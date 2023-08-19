@@ -4,32 +4,57 @@
 -ifndef('role_HRL').
 -define('role_HRL', true).
 
--define(ONLINE_ROLE_LIST, online_role_list).
-
--define(ROLE_ETS_CACHE(Ets), {role_ets_cache, Ets}).
+-define(ONLINE, 1).
+-define(OFFLINE, 0).
+-define(ONLINE_MAP, online_map).
 
 -record(role, {
-    id = 0 :: integer(),
-    name = "" :: string(),
-    sex = 0 :: integer(),
-    level = 0 :: integer(),
-    career = 0 :: integer(),
-    account = "" :: string()
+    id = 0,
+    name = "",
+    sex = 0,
+    level = 0,
+    career = 0,
+    account = ""
 }).
 
 -record(role_handle, {
-    ets = undefined :: atom(),
-    db = undefined :: atom(),
-    get_func = undefined:: term(),
-    put_func = undefined:: term(),
-    load_func = undefined:: term(),
-    save_func = undefined:: term()
+    ets = undefined,
+    db = undefined,
+    get_func = undefined,
+    put_func = undefined,
+    load_func = undefined,
+    save_func = undefined
 }).
 
 -record(player_account, {
-    account = "" :: string() ,
-    tel = "" :: string(),
-    role_list = [] :: list() %% [#role{}]
+    account = "",
+    tel = "",
+    role_list = []
+}).
+
+-record(role_other, {
+    id = 0,
+    login_tick = 0,
+    logout_tick = 0,
+    is_online = 0
+}).
+
+-record(role_show, {
+    id = 0,
+    name = "",
+    sex = 0,
+    career = 0,
+    level = 0,
+    league_id = 0,
+    league_name = "",
+    force = 0,
+    frame = 0,
+    title = 0
+}).
+
+-record(role_fight, {
+    id = 0,
+    force = 0
 }).
 
 -endif.

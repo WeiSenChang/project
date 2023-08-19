@@ -12,6 +12,7 @@ goto wait_input
     echo 启动服务   start
     echo 停止服务   stop
     echo 更新代码   u
+    echo 连接服务   attach
     echo 退出脚本   quit
     echo =================
     set /p var=请输入指令:
@@ -20,6 +21,7 @@ goto wait_input
     if "%var%" == "stop" goto stop
     if "%var%" == "u" goto u
     if "%var%" == "quit" goto quit
+    if "%var%" == "attach" goto attach
     goto wait_input
 
 :make
@@ -40,6 +42,11 @@ goto wait_input
 :u
     set var=
     erl -setcookie '%cookie%' -name stop_%node% -pa ebin -eval "rpc:call('%node%', u, u, []), init:stop()"
+    goto wait_input
+
+:attach
+    set var=
+    start werl -setcookie '%cookie%' -name attach_%node% -remsh %node%
     goto wait_input
 
 :quit

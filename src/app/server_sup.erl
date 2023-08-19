@@ -31,9 +31,11 @@ start_child(ProcessName, Mod, RestartType, Args) ->
     supervisor:start_child(erlang:whereis(?MODULE), AChild).
 
 delete_child(ProcessName) ->
+    delete_child(ProcessName, 1).
+delete_child(ProcessName, Count) ->
     case supervisor:delete_child(erlang:whereis(?MODULE), ProcessName) of
         ok -> ok;
-        _Reason -> ?WARNING("~p", [_Reason])
+        _Reason -> delete_child(ProcessName, Count + 1)
     end.
 
 %%%===================================================================

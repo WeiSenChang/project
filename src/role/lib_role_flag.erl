@@ -3,19 +3,29 @@
 -author("weisenchang").
 
 -include("common.hrl").
--include("role.hrl").
+
+-define(ROLE_SAVE_FLAG(Ets), {role_save_flag, Ets}).
+-define(ROLE_SHOW_FLAG, role_show_flag).
 
 %% API
 -export([
-    get_ets_cache_flag/1,
-    put_ets_cache_flag/2
+    get_save_flag/1,
+    put_save_flag/2,
+    get_show_flag/0,
+    put_show_flag/1
 ]).
 
-get_ets_cache_flag(Ets) ->
-    get_role_flag(?ROLE_ETS_CACHE(Ets)).
+get_save_flag(Ets) ->
+    get_role_flag(?ROLE_SAVE_FLAG(Ets)).
 
-put_ets_cache_flag(Ets, Flag) ->
-    put_role_flag(?ROLE_ETS_CACHE(Ets), Flag).
+put_save_flag(Ets, Flag) ->
+    put_role_flag(?ROLE_SAVE_FLAG(Ets), Flag).
+
+get_show_flag() ->
+    get_role_flag(?ROLE_SHOW_FLAG).
+
+put_show_flag(Flag) ->
+    put_role_flag(?ROLE_SHOW_FLAG, Flag).
 
 %% 内部接口
 %%%%%%%%%%

@@ -7,20 +7,21 @@
 %% API
 -export([
     listen_role_login/0,
-    listen_role_logout/1,
+    listen_role_logout/0,
     listen_zero_timer/0,
     listen_min_timer/0
 ]).
 
 listen_role_login() ->
-    Role = lib_role:get_role(),
+    lib_role_other:update_login(),
     mod_server:async_apply(mod_role_manage:get_pid(),
-        fun lib_role_manage:insert_role/1, [Role]),
+        fun lib_role_manage:insert_online_role/1, [lib_role:role_id()]),
     ok.
 
-listen_role_logout(RoleId) ->
+listen_role_logout() ->
+    lib_role_other:update_logout(),
     mod_server:async_apply(mod_role_manage:get_pid(),
-        fun lib_role_manage:remove_role/1, [RoleId]),
+        fun lib_role_manage:remove_online_role/1, [lib_role:role_id()]),
     ok.
 
 listen_zero_timer() ->

@@ -122,6 +122,7 @@ min() ->
     notify(?NOTIFY_MIN_MODS, min).
 
 hour() ->
+    erlang:garbage_collect(),
     notify(?NOTIFY_HOUR_MODS, hour).
 
 zero() ->

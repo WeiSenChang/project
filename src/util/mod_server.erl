@@ -49,7 +49,6 @@ init([Mod, Args]) ->
         put_callback_mod(Mod),
         InitRet = Mod:init(Args),
         cast(self(), {db_init, Args}),
-        ?INFO("mod_server ~w start ~w~n", [Mod, Args]),
         InitRet
     catch
         _:Reason ->
@@ -98,7 +97,6 @@ handle_info(Info, State) ->
 %% with Reason. The return value is ignored.
 terminate(Reason, State) ->
     Mod = get_callback_mod(),
-    ?INFO("~w stop ~w~n", [Mod, Reason]),
     try
         Mod:terminate(Reason, State)
     catch
@@ -128,8 +126,6 @@ do_call(get_status, _From, State) ->
 
 %% 同步停止进程
 do_call(stop, _From, State) ->
-    Mod = get_callback_mod(),
-    ?INFO("sync stop ~w~n", [Mod]),
     {stop, normal, ok, State};
 
 do_call(Request, From, State) ->
@@ -143,12 +139,8 @@ do_cast({async_apply, Fun, Args}, State) ->
 
 %% 异步停止进程
 do_cast(stop, State) ->
-    Mod = get_callback_mod(),
-    ?INFO("cast stop ~w~n", [Mod]),
     {stop, normal, State};
 do_cast({stop, Reason}, State) ->
-    Mod = get_callback_mod(),
-    ?INFO("cast stop ~w~n", [Mod]),
     {stop, Reason, State};
 
 %% 异步加载数据库
@@ -175,7 +167,7 @@ call(Pid, Request) ->
 sync_apply(Pid, Fun, Args) ->
     call(Pid, {sync_apply, Fun, Args}).
 
-%% 异步停止进程
+%% 同步停止进程
 sync_stop(Pid) ->
     call(Pid, stop).
 
