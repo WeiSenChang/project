@@ -57,14 +57,12 @@ load_role_cache() ->
 load_role_cache([]) ->
     ok;
 load_role_cache([Ets|T]) ->
-    ?DEBUG("~w", [lib_timer:unix_time()]),
     case get_load_cfg(Ets) of
         {Ets, Ids, LoadFun, PutFun} ->
             Fun = fun(Id) -> PutFun(LoadFun(Id), false) end,
             lists:foreach(Fun, Ids);
         _ -> ?WARNING("not_get_load_cfg, ets: ~w", [Ets])
     end,
-    ?DEBUG("~w", [lib_timer:unix_time()]),
     load_role_cache(T).
 
 get_load_cfg(?ETS_ROLE_SHOW) ->
