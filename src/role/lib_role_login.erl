@@ -16,8 +16,8 @@ create(Account) ->
     Id = lib_counter:get_role_id(),
     Role = #role{id = Id, account = Account},
     db_role:save_role(Role),
-    #player_account{role_list = RoleList} = PlayerAccount = db_role:load_player_account(Account),
-    db_role:save_player_account(PlayerAccount#player_account{role_list = [Role|RoleList]}),
+    #player_account{role_map = RoleMap} = PlayerAccount = db_role:load_player_account(Account),
+    db_role:save_player_account(PlayerAccount#player_account{role_map = maps:put(Id, 1, RoleMap)}),
     Id.
 
 login(Id) ->

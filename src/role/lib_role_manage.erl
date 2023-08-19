@@ -7,25 +7,18 @@
 
 %% API
 -export([
-    insert_online_role/1,
-    remove_online_role/1,
-
-    get_online_map/0,
-    put_online_map/1,
-
-    i/0
+    i/0,
+    min/0,
+    hour/0,
+    zero/0,
+    async_insert_online_role/1,
+    async_remove_online_role/1
 ]).
 
 -export([
-    loop/0,
-    min/0,
-    hour/0,
-    zero/0
+    insert_online_role/1,
+    remove_online_role/1
 ]).
-
-loop() ->
-    ?DEBUG("lib_role_mange loop"),
-    ok.
 
 min() ->
     ?DEBUG("lib_role_mange min"),
@@ -34,6 +27,7 @@ min() ->
 
 hour() ->
     ?DEBUG("lib_role_mange hour"),
+    notify_role_timer(fun lib_role_listen:listen_hour_timer/0),
     ok.
 
 zero() ->
@@ -42,12 +36,28 @@ zero() ->
     ok.
 
 notify_role_timer(Func) ->
-    Fun = fun(Id, _) -> mod_server:async_apply(mod_role:get_pid(Id), Func, []) end,
+    Fun = fun(Id, _) -> notify_role_timer(Id, Func) end,
     maps:foreach(Fun, get_online_map()).
+notify_role_timer(Id, Func) ->
+    Pid = mod_role:get_pid(Id),
+    mod_server:async_apply(Pid, Func).
 
 i() ->
     mod_server:sync_apply(mod_role_manage:get_pid(), fun lib_role_manage:get_online_map/0, []).
 
+async_insert_online_role(Id) ->
+    Pid = mod_role_manage:get_pid(),
+    Fun = fun lib_role_manage:insert_online_role/1,
+    Args = [Id],
+    mod_server:async_apply(Pid, Fun, Args).
+
+async_remove_online_role(Id) ->
+    Pid = mod_role_manage:get_pid(),
+    Fun = fun lib_role_manage:remove_online_role/1,
+    Args = [Id],
+    mod_server:async_apply(Pid, Fun, Args).
+
+%%%%%%%%
 insert_online_role(Id) ->
     OnlineMap = get_online_map(),
     put_online_map(maps:put(Id, 1, OnlineMap)).

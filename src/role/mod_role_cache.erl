@@ -77,6 +77,7 @@ handle_cast(_Request, State = #mod_role_cache_state{}) ->
     {stop, Reason :: term(), NewState :: #mod_role_cache_state{}}).
 handle_info(save, State = #mod_role_cache_state{}) ->
     erlang:send_after(60 * 1000, self(), save),
+    ?DEBUG("~w", [save_timeout]),
     lib_role_cache:save_role_cache(),
     {noreply, State};
 handle_info(_Info, State = #mod_role_cache_state{}) ->

@@ -61,18 +61,20 @@ update_logout() ->
     check_show_update().
 
 check_show_update() ->
-    case lib_role_flag:get_show_flag() of
-        1 ->
-            lib_role_flag:put_show_flag(0),
-            update_role_show();
-        _ -> skip
-    end.
+    Flag = lib_role_flag:get_show_flag(),
+    check_show_update(Flag).
+check_show_update(1) ->
+    lib_role_flag:put_show_flag(0),
+    update_role_show();
+check_show_update(_) ->
+    skip.
 
 update_role_show() ->
     RoleShow = make_role_show(),
-    mod_server:async_apply(mod_role_cache:get_pid(),
-        fun lib_role_cache:put_role_show/2, [RoleShow, true]),
-    ok.
+    Pid = mod_role_cache:get_pid(),
+    Fun = fun lib_role_cache:put_role_show/2,
+    Args = [RoleShow, true],
+    mod_server:async_apply(Pid, Fun, Args).
 
 make_role_show() ->
     #role{

@@ -26,6 +26,7 @@
 ]).
 
 -define(SAVE_MAP(Ets), {save_map, Ets}).
+
 -define(CACHE_ETS_LIST, [?ETS_ROLE_SHOW, ?ETS_ROLE_FIGHT]).
 
 ets_init() ->
@@ -53,49 +54,56 @@ get_role_cache(Id, Ets) ->
     end.
 
 load_role_cache() ->
-    load_role_cache(?CACHE_ETS_LIST).
-load_role_cache([]) ->
-    ok;
-load_role_cache([Ets|T]) ->
-    case get_load_cfg(Ets) of
-        {Ets, Ids, LoadFun, PutFun} ->
-            Fun = fun(Id) -> PutFun(LoadFun(Id), false) end,
-            lists:foreach(Fun, Ids);
-        _ -> ?WARNING("not_get_load_cfg, ets: ~w", [Ets])
-    end,
-    load_role_cache(T).
+    Fun = fun(Ets) -> load_role_cache(get_load_cfg(Ets)) end,
+    lists:foreach(Fun, ?CACHE_ETS_LIST).
+
+load_role_cache({Ids, LoadFun, PutFun}) ->
+    Fun = fun(Id) -> PutFun(LoadFun(Id), false) end,
+    lists:foreach(Fun, Ids);
+load_role_cache(_) ->
+    skip.
 
 get_load_cfg(?ETS_ROLE_SHOW) ->
-    {?ETS_ROLE_SHOW, db_role:all_role_show_id(),
-        fun db_role:load_role_show/1, fun lib_role_cache:put_role_show/2};
+    Ids = db_role:all_role_show_id(),
+    LoadFun = fun db_role:load_role_show/1,
+    PutFun = fun lib_role_cache:put_role_show/2,
+    {Ids, LoadFun, PutFun};
 get_load_cfg(?ETS_ROLE_FIGHT) ->
-    {?ETS_ROLE_FIGHT, db_role:all_role_fight_id(),
-        fun db_role:load_role_fight/1, fun lib_role_cache:put_role_fight/2};
-get_load_cfg(_Ets) -> undefined.
+    Ids = db_role:all_role_fight_id(),
+    LoadFun = fun db_role:load_role_fight/1,
+    PutFun = fun lib_role_cache:put_role_fight/2,
+    {Ids, LoadFun, PutFun};
+get_load_cfg(_Ets) ->
+    undefined.
 
 save_role_cache() ->
-    save_role_cache(?CACHE_ETS_LIST).
-save_role_cache([]) ->
-    ok;
-save_role_cache([Ets|T]) ->
+    Fun = fun(Ets) -> save_role_cache(get_save_cfg(Ets)) end,
+    lists:foreach(Fun, ?CACHE_ETS_LIST).
+
+save_role_cache({Ets, SaveFun, GetFun}) ->
     SaveMap = get_save_map(Ets),
     put_save_map(#{}, Ets),
-    case get_save_cfg(Ets) of
-        {Ets, SaveFun, GetFun} ->
-            Fun = fun(Id, _) -> save_role_cache(Id, SaveFun, GetFun) end,
-            maps:foreach(Fun, SaveMap);
-        _ -> ?WARNING("not_save_load_cfg, ets: ~w", [Ets])
-    end,
-    save_role_cache(T).
+    Fun = fun(Id, _) -> save_role_cache(Id, SaveFun, GetFun) end,
+    maps:foreach(Fun, SaveMap);
+save_role_cache(_) ->
+    skip.
 
 save_role_cache(Id, SaveFun, GetFun) ->
-    case GetFun(Id) of undefined -> skip; RoleCache -> SaveFun(RoleCache) end.
+    case GetFun(Id) of
+        undefined -> skip;
+        RoleCache -> SaveFun(RoleCache)
+    end.
 
 get_save_cfg(?ETS_ROLE_SHOW) ->
-    {?ETS_ROLE_SHOW, fun db_role:save_role_show/1, fun lib_role_cache:get_role_show/1};
+    SaveFun = fun db_role:save_role_show/1,
+    GetFun = fun lib_role_cache:get_role_show/1,
+    {?ETS_ROLE_SHOW, SaveFun, GetFun};
 get_save_cfg(?ETS_ROLE_FIGHT) ->
-    {?ETS_ROLE_FIGHT, fun db_role:save_role_fight/1, fun lib_role_cache:get_role_fight/1};
-get_save_cfg(_Ets) -> undefined.
+    SaveFun = fun db_role:save_role_fight/1,
+    GetFun = fun lib_role_cache:get_role_fight/1,
+    {?ETS_ROLE_FIGHT, SaveFun, GetFun};
+get_save_cfg(_Ets) ->
+    undefined.
 
 
 %%%%%%%%%

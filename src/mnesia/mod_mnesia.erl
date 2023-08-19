@@ -14,7 +14,7 @@
 -include("common.hrl").
 
 %% API
--export([start_link/0, db_init/2, get_pid/0, insert/2, async_insert/1]).
+-export([start_link/0, db_init/2, get_pid/0, insert/3, async_insert/1]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2, terminate/2,
@@ -115,10 +115,14 @@ db_init(State, _Args) ->
 get_pid() ->
     whereis(?SERVER).
 
-insert(Tab, Data) ->
-    mod_server:async_apply(mod_mnesia:get_pid(), fun mod_mnesia:async_insert/1, [{Tab, Data}]).
+insert(Tab, Key, Data) ->
+    Pid = mod_mnesia:get_pid(),
+    Fun = fun mod_mnesia:async_insert/1,
+    Args = [{Tab, Key, Data}],
+    mod_server:async_apply(Pid, Fun, Args).
 
 async_insert(Dump) ->
+    ?DEBUG("~w", [Dump]),
     DumpList = get_dump_list(),
     put_dump_list([Dump|DumpList]).
 
@@ -138,5 +142,5 @@ dump_data() ->
     Num = max(0, length(DumpList) - 2000),
     {LeftDumpList, DoDumpList} = lists:split(Num, DumpList),
     put_dump_list(LeftDumpList),
-    Fun = fun({Tab, Data}) -> lib_mnesia:write(Tab, Data) end,
+    Fun = fun({Tab, Key, Data}) -> lib_mnesia:write(Tab, Key, Data) end,
     lists:foreach(Fun, lists:reverse(DoDumpList)).

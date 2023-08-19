@@ -4,8 +4,6 @@
 -ifndef('mnesia_HRL').
 -define('mnesia_HRL', true).
 
--define(DB_OPTS, [{record_name, key_value}, {attributes, [key, value]}]).
-
 %% 日志
 -define(LOG, log).
 

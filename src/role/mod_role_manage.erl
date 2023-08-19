@@ -14,7 +14,7 @@
 -include("common.hrl").
 
 %% API
--export([start_link/0, get_pid/0, db_init/2, stop/0, loop/0, min/0, hour/0, zero/0]).
+-export([start_link/0, get_pid/0, db_init/2, stop/0, min/0, hour/0, zero/0]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2, terminate/2,
@@ -37,10 +37,6 @@ get_pid() ->
 
 stop() ->
     mod_server:sync_stop(get_pid()).
-
-loop() ->
-    mod_server:async_apply(get_pid(), fun lib_role_manage:loop/0, []),
-    ok.
 
 min() ->
     mod_server:async_apply(get_pid(), fun lib_role_manage:min/0, []),

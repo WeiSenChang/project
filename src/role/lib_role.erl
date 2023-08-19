@@ -13,8 +13,7 @@
 -export([
     put_role/2,
     get_role/0,
-    change_role_name/1,
-    change_role_name/2
+    change_role_name/1
 ]).
 
 -export([
@@ -23,12 +22,12 @@
 ]).
 
 put_role(Role, IsSave) ->
-    #role_handle{ets = Ets} = role_handle(),
+    #role_handle{ets = Ets} = lib_role:role_handle(),
     erlang:put(Ets, Role),
     set_save_flag(IsSave, Ets).
 
 get_role() ->
-    #role_handle{ets = Ets} = role_handle(),
+    #role_handle{ets = Ets} = lib_role:role_handle(),
     erlang:get(Ets).
 
 role_handle() ->
@@ -46,9 +45,6 @@ role_id() ->
     Role = get_role(),
     Role#role.id.
 
-change_role_name(Id, Name) ->
-    mod_server:async_apply(mod_role:get_pid(Id),
-        fun lib_role:change_role_name/1, [Name]).
 change_role_name(Name) ->
     Role = get_role(),
     NewRole = Role#role{name = Name},
@@ -56,10 +52,7 @@ change_role_name(Name) ->
     lib_role_flag:put_show_flag(1).
 
 %%%%%%%%%%%%%
-set_save_flag(IsSave, Ets) ->
-    case IsSave of
-        true ->
-            lib_role_flag:put_save_flag(Ets, 1);
-        _ ->
-            ignore
-    end.
+set_save_flag(true, Ets) ->
+    lib_role_flag:put_save_flag(Ets, 1);
+set_save_flag(_IsSave, _Ets) ->
+    skip.

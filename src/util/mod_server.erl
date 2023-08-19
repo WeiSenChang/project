@@ -16,8 +16,10 @@
 %% API
 -export([
     start_link/4,
+    sync_apply/2,
     sync_apply/3,
     sync_stop/1,
+    async_apply/2,
     async_apply/3,
     async_stop/1,
     async_stop/2,
@@ -116,6 +118,9 @@ code_change(_OldVsn, State, _Extra) ->
 %%% Internal functions
 %%%===================================================================
 %% 同步调用接口
+do_call({sync_apply, Fun}, _From, State) ->
+    Reply = Fun(),
+    {reply, Reply, State};
 do_call({sync_apply, Fun, Args}, _From, State) ->
     Reply = erlang:apply(Fun, Args),
     {reply, Reply, State};
@@ -133,6 +138,9 @@ do_call(Request, From, State) ->
     Mod:handle_call(Request, From, State).
 
 %% 异步调用接口
+do_cast({async_apply, Fun}, State) ->
+    Fun(),
+    {noreply, State};
 do_cast({async_apply, Fun, Args}, State) ->
     erlang:apply(Fun, Args),
     {noreply, State};
@@ -164,6 +172,9 @@ do_info(Info, State) ->
 call(Pid, Request) ->
    gen_server:call(Pid, Request).
 
+sync_apply(Pid, Fun) ->
+    call(Pid, {sync_apply, Fun}).
+
 sync_apply(Pid, Fun, Args) ->
     call(Pid, {sync_apply, Fun, Args}).
 
@@ -174,6 +185,9 @@ sync_stop(Pid) ->
 %% 异步发送消息
 cast(Pid, Msg) ->
     gen_server:cast(Pid, Msg).
+
+async_apply(Pid, Fun) ->
+    cast(Pid, {async_apply, Fun}).
 
 async_apply(Pid, Fun, Args) ->
     cast(Pid, {async_apply, Fun, Args}).

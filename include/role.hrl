@@ -29,7 +29,7 @@
 -record(player_account, {
     account = "",
     tel = "",
-    role_list = []
+    role_map = #{}
 }).
 
 -record(role_other, {

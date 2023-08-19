@@ -15,16 +15,15 @@ u() ->
     ?DEBUG("=== code reload begin ==="),
     {ok, FileList} = file:list_dir(?BEAM_PATH),
     Mods = get_change_mod(FileList),
-    u(Mods),
+    Fun = fun(Mod) -> u(Mod) end,
+    lists:foreach(Fun, Mods),
     ?DEBUG("=== code reload end   ==="),
     ok.
 
-u([]) -> ok;
-u([Mod|T]) ->
+u(Mod) ->
     code:purge(Mod),
     code:load_file(Mod),
-    ?DEBUG("reload ~p", [Mod]),
-    u(T).
+    ?DEBUG("reload ~p", [Mod]).
 
 get_change_mod(FileList) ->
     get_change_mod(FileList, []).

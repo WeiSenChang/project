@@ -13,15 +13,7 @@
 -behaviour(application).
 
 %% Application callbacks
--export([start/2,
-    stop/1]).
-
--export([
-    start_mod_player/0
-]).
-
--define(ONE_FOR_ONE, one_for_one).
--define(ALL_FOR_ONE, all_for_one).
+-export([start/2, stop/1]).
 
 %%%===================================================================
 %%% Application callbacks
@@ -67,5 +59,3 @@ stop(_State) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
-start_mod_player() ->
-    start(?ONE_FOR_ONE, player).

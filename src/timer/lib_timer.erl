@@ -31,14 +31,9 @@ unix_time(Date) ->
     {Day, {H, M, S}} = calendar:time_difference(start_date_time(), Date),
     Day * day_second() + H * hour_second() + M * minute_second() + S.
 
-minute_second() ->
-    60.
-
-hour_second() ->
-    3600.
-
-day_second() ->
-    86400.
+minute_second() -> 60.
+hour_second() -> 3600.
+day_second() -> 86400.
 
 to_local_time(Tick) ->
     Start = calendar:datetime_to_gregorian_seconds(start_date_time()),

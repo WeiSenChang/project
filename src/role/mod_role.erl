@@ -126,29 +126,26 @@ code_change(_OldVsn, State = #mod_role_state{}, _Extra) ->
 %%% Internal functions
 %%%===================================================================
 save_role_data() ->
-    RoleHandles = lib_role_handle:get_role_handles(),
-    save_role_data(RoleHandles).
-save_role_data([]) ->
-    ok;
-save_role_data([RoleHandle|T]) ->
-    #role_handle{ets = Ets, get_func = GetFunc, save_func = SaveFunc} = RoleHandle,
+    Fun = fun(Handle) -> save_role_data(Handle) end,
+    lists:foreach(Fun, lib_role_handle:get_role_handles()).
+save_role_data(Handle) ->
+    #role_handle{ets = Ets, get_func = GetFunc, save_func = SaveFunc} = Handle,
     Flag = lib_role_flag:get_save_flag(Ets),
-    case Flag of
-        1 ->
-            lib_role_flag:put_save_flag(Ets, 0),
-            Data = GetFunc(),
-            SaveFunc(Data);
-        _ -> ignore
-    end,
-    save_role_data(T).
+    save_role_data(Flag, Ets, GetFunc, SaveFunc).
+save_role_data(1, Ets, GetFunc, SaveFunc) ->
+    lib_role_flag:put_save_flag(Ets, 0),
+    Data = GetFunc(),
+    SaveFunc(Data);
+save_role_data(_, _Ets, _GetFunc, _SaveFunc) ->
+    skip.
 
-load_role_data(RoleId) ->
-    RoleHandles = lib_role_handle:get_role_handles(),
-    lists:foreach(
-        fun(#role_handle{load_func = LoadFunc, put_func = PutFunc}) ->
-            Data = LoadFunc(RoleId),
-            PutFunc(Data, false)
-        end, RoleHandles).
+load_role_data(Id) ->
+    Fun = fun(Handle) -> load_role_data(Handle, Id) end,
+    lists:foreach(Fun, lib_role_handle:get_role_handles()).
+load_role_data(Handle, Id) ->
+    #role_handle{load_func = LoadFunc, put_func = PutFunc} = Handle,
+    Data = LoadFunc(Id),
+    PutFunc(Data, false).
 
 logout() ->
     lib_role_listen:listen_role_logout(),

@@ -40,9 +40,9 @@ load_uid_i(Key) ->
 
 save_uid_i() ->
     SaveList = get_save_list(),
-    Fun = fun(Uid) -> mod_mnesia:insert(?DB_UID, #key_value{key = Uid#uid.key, value = Uid}) end,
-    lists:foreach(Fun, SaveList),
-    put_save_list([]).
+    put_save_list([]),
+    Fun = fun(Uid) -> mod_mnesia:insert(?DB_UID, Uid#uid.key, Uid) end,
+    lists:foreach(Fun, SaveList).
 
 %% 获取唯一id接口
 %%%%%%%%%%%
@@ -56,23 +56,25 @@ get_mail_id() ->
 %% 内部接口
 %%%%%%%%%%%%%%%%%%%%
 get_counter_id(Key) ->
-    mod_server:sync_apply(mod_counter:get_pid(), fun lib_counter:sync_get_counter_id/1, [Key]).
+    Pid = mod_counter:get_pid(),
+    Fun = fun lib_counter:sync_get_counter_id/1,
+    Args = [Key],
+    mod_server:sync_apply(Pid, Fun, Args).
+
 sync_get_counter_id(Key) ->
     Uid = get_uid_i(Key),
     Val = Uid#uid.val + 1,
     NewUid = Uid#uid{val = Val},
     put_uid_i(NewUid),
     SaveList = get_save_list(),
-    put_save_list(lists:keystore(Key, #uid.key, SaveList, NewUid)),
+    NewSaveList = lists:keystore(Key, #uid.key, SaveList, NewUid),
+    put_save_list(NewSaveList),
     Val.
 
 get_uid_i(Key) ->
     case ets:lookup(?ETS_UID, Key) of
         [Uid] -> Uid;
-        _ ->
-            DbUid = lib_mnesia:read(?DB_UID, Key, #uid{key = Key}),
-            put_uid_i(DbUid),
-            DbUid
+        _ -> #uid{key = Key}
     end.
 
 put_uid_i(Uid) ->
