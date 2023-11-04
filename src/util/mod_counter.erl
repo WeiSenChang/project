@@ -42,8 +42,6 @@ start_link() ->
     {ok, State :: #mod_counter_state{}} | {ok, State :: #mod_counter_state{}, timeout() | hibernate} |
     {stop, Reason :: term()} | ignore).
 init([]) ->
-    lib_counter:ets_init(),
-    erlang:send_after(1000, self(), save),
     {ok, #mod_counter_state{}}.
 
 %% @private
@@ -74,10 +72,6 @@ handle_cast(_Request, State = #mod_counter_state{}) ->
     {noreply, NewState :: #mod_counter_state{}} |
     {noreply, NewState :: #mod_counter_state{}, timeout() | hibernate} |
     {stop, Reason :: term(), NewState :: #mod_counter_state{}}).
-handle_info(save, State = #mod_counter_state{}) ->
-    erlang:send_after(1000, self(), save),
-    lib_counter:save_uid_i(),
-    {noreply, State};
 handle_info(_Info, State = #mod_counter_state{}) ->
     {noreply, State}.
 
@@ -103,7 +97,6 @@ code_change(_OldVsn, State = #mod_counter_state{}, _Extra) ->
 %%% Internal functions
 %%%===================================================================
 db_init(State, _Args) ->
-    lib_counter:load_uid_i(),
     {noreply, State}.
 
 get_pid() ->

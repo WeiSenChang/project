@@ -29,8 +29,7 @@
 ]).
 
 %% gen_server callbacks
--export([init/1, handle_call/3, handle_cast/2, handle_info/2, terminate/2,
-    code_change/3]).
+-export([init/1, handle_call/3, handle_cast/2, handle_info/2, terminate/2, code_change/3]).
 
 -define(CALL_BACK_MOD, callback_mod).
 
@@ -54,7 +53,6 @@ init([Mod, Args]) ->
         InitRet
     catch
         _:Reason ->
-            ?ERROR("start ~w failed, Args:~w, Reason:~w~n", [Mod, Args, Reason]),
             timer:sleep(1000),
             {error, Reason}
     end.
@@ -65,8 +63,8 @@ handle_call(Request, From, State) ->
     try
         do_call(Request, From, State)
     catch
-        _:Reason ->
-            ?ERROR("~w error reason of do_call, Reason:~w, From:~w, Request:~w~n", [get_callback_mod(), Reason, From, Request]),
+        _:_Reason ->
+            ?DEBUG("~w", [_Reason]),
             {reply, ok, State}
     end.
 
@@ -76,8 +74,8 @@ handle_cast(Request, State) ->
     try
         do_cast(Request, State)
     catch
-        _:Reason ->
-            ?ERROR("~w error reason of do_cast, Reason:~w, Request:~w~n", [get_callback_mod(), Reason, Request]),
+        _:_Reason ->
+            ?DEBUG("~w, ~w", [get_callback_mod(), _Reason]),
             {noreply, State}
     end.
 
@@ -87,8 +85,8 @@ handle_info(Info, State) ->
     try
         do_info(Info, State)
     catch
-        _:Reason ->
-            ?ERROR("~w error reason of do_info, Reason:~w, Info:~w~n", [get_callback_mod(), Reason, Info]),
+        _:_Reason ->
+            ?DEBUG("~w", [_Reason]),
             {noreply, State}
     end.
 
@@ -102,8 +100,9 @@ terminate(Reason, State) ->
     try
         Mod:terminate(Reason, State)
     catch
-        _:StopReason ->
-            ?ERROR("stop ~w error ~w~n", [Mod, StopReason])
+        _:_StopReason ->
+            ?DEBUG("~w", [_StopReason]),
+            skip
     end,
     {stop, Reason, State}.
 
@@ -111,7 +110,6 @@ terminate(Reason, State) ->
 %% @doc Convert process state when code is changed
 code_change(_OldVsn, State, _Extra) ->
     Mod = get_callback_mod(),
-    ?INFO("code_change ~w~n", [Mod]),
     Mod:code_change(Mod, State).
 
 %%%===================================================================

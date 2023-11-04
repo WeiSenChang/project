@@ -7,7 +7,7 @@
 -include("common.hrl").
 
 %% API
--export([start_link/0, start_child/4, delete_child/1]).
+-export([start_link/0, start_child/4, delete_child/1, terminate_child/1]).
 
 %% Supervisor callbacks
 -export([init/1]).
@@ -30,13 +30,11 @@ start_child(ProcessName, Mod, RestartType, Args) ->
         modules => [Mod]},
     supervisor:start_child(erlang:whereis(?MODULE), AChild).
 
+terminate_child(ProcessName) ->
+    supervisor:terminate_child(erlang:whereis(?MODULE), ProcessName).
+
 delete_child(ProcessName) ->
-    delete_child(ProcessName, 1).
-delete_child(ProcessName, Count) ->
-    case supervisor:delete_child(erlang:whereis(?MODULE), ProcessName) of
-        ok -> ok;
-        _Reason -> delete_child(ProcessName, Count + 1)
-    end.
+    supervisor:delete_child(erlang:whereis(?MODULE), ProcessName).
 
 %%%===================================================================
 %%% Supervisor callbacks

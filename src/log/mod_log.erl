@@ -12,7 +12,6 @@
 -behaviour(gen_server).
 
 -include("common.hrl").
--include("mnesia.hrl").
 
 %% API
 -export([start_link/0, msg/3, msg/4, async_msg/1, get_pid/0,
@@ -183,7 +182,7 @@ close_log() ->
     end.
 
 open_log() ->
-    Mod = lib_common:tab(?LOG),
+    Mod = lib_common:log_tab("log"),
     File = erlang:atom_to_list(Mod),
     FileName = ?LOG_PATH ++ File ++ ".log",
     filelib:ensure_dir(FileName),

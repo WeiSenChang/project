@@ -110,5 +110,4 @@ db_init(State, []) ->
     {noreply, State}.
 
 stop() ->
-%%    save_friend_data(),
     mod_server:sync_stop(get_pid()).

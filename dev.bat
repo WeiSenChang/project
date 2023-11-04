@@ -26,7 +26,11 @@ goto wait_input
 
 :make
     set var=
+    escript make_table.erl
+    rd /s /q "./ebin"
+    md "./ebin"
     erl -noshell -s make all -s init stop
+    copy ".\src\app\server.app" ".\ebin\"
     goto wait_input
 
 :start
@@ -36,7 +40,7 @@ goto wait_input
 
 :stop
     set var=
-    erl -setcookie '%cookie%' -name stop_%node% -pa ebin -eval "rpc:call('%node%', init, stop, []), init:stop()"
+    erl -setcookie '%cookie%' -name stop_%node% -pa ebin -eval "rpc:call('%node%', main, stop, []), rpc:call('%node%', init, stop, []), init:stop()"
     goto wait_input
 
 :u

@@ -3,7 +3,8 @@
 -author("weisenchang").
 
 -include("common.hrl").
--include("role.hrl").
+
+-define(ONLINE_MAP, online_map).
 
 %% API
 -export([
@@ -12,7 +13,8 @@
     hour/0,
     zero/0,
     async_insert_online_role/1,
-    async_remove_online_role/1
+    async_remove_online_role/1,
+    get_online_map/0
 ]).
 
 -export([
@@ -21,18 +23,15 @@
 ]).
 
 min() ->
-    ?DEBUG("lib_role_mange min"),
-    notify_role_timer(fun lib_role_listen:listen_min_timer/0),
+    notify_role_timer(fun lib_role_listen:listen_min_timer/1),
     ok.
 
 hour() ->
-    ?DEBUG("lib_role_mange hour"),
-    notify_role_timer(fun lib_role_listen:listen_hour_timer/0),
+    notify_role_timer(fun lib_role_listen:listen_hour_timer/1),
     ok.
 
 zero() ->
-    ?DEBUG("lib_role_mange zero"),
-    notify_role_timer(fun lib_role_listen:listen_zero_timer/0),
+    notify_role_timer(fun lib_role_listen:listen_zero_timer/1),
     ok.
 
 notify_role_timer(Func) ->
@@ -40,7 +39,7 @@ notify_role_timer(Func) ->
     maps:foreach(Fun, get_online_map()).
 notify_role_timer(Id, Func) ->
     Pid = mod_role:get_pid(Id),
-    mod_server:async_apply(Pid, Func).
+    mod_server:async_apply(Pid, Func, [Id]).
 
 i() ->
     mod_server:sync_apply(mod_role_manage:get_pid(), fun lib_role_manage:get_online_map/0, []).

@@ -132,5 +132,5 @@ zero() ->
 notify([], _Name) ->
     ok;
 notify([Mod|T], Name) ->
-    ?TRY_CATCH(Mod, Name, []),
+    Mod:Name(),
     notify(T, Name).

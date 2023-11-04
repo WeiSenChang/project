@@ -6,32 +6,32 @@
 
 %% API
 -export([
-    listen_role_login/0,
-    listen_role_logout/0,
+    listen_role_login/1,
+    listen_role_logout/1,
 
-    listen_min_timer/0,
-    listen_hour_timer/0,
-    listen_zero_timer/0
+    listen_min_timer/1,
+    listen_hour_timer/1,
+    listen_zero_timer/1
 ]).
 
-listen_role_login() ->
-    lib_role_other:update_login(),
-    lib_role_manage:async_insert_online_role(lib_role:role_id()),
+listen_role_login(Id) ->
+    ?DEBUG("role login ~p", [Id]),
+    lib_role_manage:async_insert_online_role(Id),
     ok.
 
-listen_role_logout() ->
-    lib_role_other:update_logout(),
-    lib_role_manage:async_remove_online_role(lib_role:role_id()),
+listen_role_logout(Id) ->
+    ?DEBUG("role logout ~p", [Id]),
+    lib_role_manage:async_remove_online_role(Id),
     ok.
 
-listen_min_timer() ->
-    ?DEBUG("role min timer ~p", [lib_role:role_id()]),
+listen_min_timer(Id) ->
+    ?DEBUG("role min timer ~p", [Id]),
     ok.
 
-listen_hour_timer() ->
-    ?DEBUG("role hour timer ~p", [lib_role:role_id()]),
+listen_hour_timer(Id) ->
+    ?DEBUG("role hour timer ~p", [Id]),
     ok.
 
-listen_zero_timer() ->
-    ?DEBUG("role zero timer ~p", [lib_role:role_id()]),
+listen_zero_timer(Id) ->
+    ?DEBUG("role zero timer ~p", [Id]),
     ok.

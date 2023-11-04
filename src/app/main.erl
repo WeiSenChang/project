@@ -13,8 +13,12 @@
 -include("common.hrl").
 
 %% API
--export([start/0]).
+-export([start/0, stop/0]).
 
 start() ->
     application:start(server),
     lib_server:start().
+
+stop() ->
+    lib_server:stop(),
+    application:stop(server).

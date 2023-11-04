@@ -11,11 +11,10 @@
 
 -behaviour(gen_server).
 
--include("role.hrl").
 -include("common.hrl").
 
 %% API
--export([get_process_name/1, start_link/1, get_pid/1, db_init/2, stop/1, logout/0]).
+-export([get_process_name/1, start_link/1, get_pid/1, db_init/2, stop/1, logout/1]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2, terminate/2,
@@ -39,8 +38,8 @@ get_pid(Id) ->
     erlang:whereis(ProcessName).
 
 get_process_name(Id) ->
-    ProcessName = erlang:atom_to_list(?MODULE) ++ "_" ++ erlang:integer_to_list(Id),
-    erlang:list_to_atom(ProcessName).
+    ProcessName = lib_types:to_list(?MODULE) ++ "_" ++ lib_types:to_list(Id),
+    lib_types:to_atom(ProcessName).
 
 stop(Id) ->
     mod_server:sync_stop(get_pid(Id)).
@@ -55,13 +54,11 @@ stop(Id) ->
     {ok, State :: #mod_role_state{}} | {ok, State :: #mod_role_state{}, timeout() | hibernate} |
     {stop, Reason :: term()} | ignore).
 init([_RoleId]) ->
-    erlang:send_after(60 * 1000, self(), save),
-    erlang:send_after(10 * 1000, self(), show),
     {ok, #mod_role_state{}}.
 
 db_init(State, [Id]) ->
     load_role_data(Id),
-    lib_role_listen:listen_role_login(),
+    lib_role_listen:listen_role_login(Id),
     {noreply, State}.
 
 %% @private
@@ -92,14 +89,6 @@ handle_cast(_Request, State = #mod_role_state{}) ->
     {noreply, NewState :: #mod_role_state{}} |
     {noreply, NewState :: #mod_role_state{}, timeout() | hibernate} |
     {stop, Reason :: term(), NewState :: #mod_role_state{}}).
-handle_info(save, State = #mod_role_state{}) ->
-    erlang:send_after(60 * 1000, self(), save),
-    save_role_data(),
-    {noreply, State};
-handle_info(show, State = #mod_role_state{}) ->
-    erlang:send_after(10 * 1000, self(), show),
-    lib_role_other:check_show_update(),
-    {noreply, State};
 handle_info(_Info, State = #mod_role_state{}) ->
     {noreply, State}.
 
@@ -125,28 +114,14 @@ code_change(_OldVsn, State = #mod_role_state{}, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
-save_role_data() ->
-    Fun = fun(Handle) -> save_role_data(Handle) end,
-    lists:foreach(Fun, lib_role_handle:get_role_handles()).
-save_role_data(Handle) ->
-    #role_handle{ets = Ets, get_func = GetFunc, save_func = SaveFunc} = Handle,
-    Flag = lib_role_flag:get_save_flag(Ets),
-    save_role_data(Flag, Ets, GetFunc, SaveFunc).
-save_role_data(1, Ets, GetFunc, SaveFunc) ->
-    lib_role_flag:put_save_flag(Ets, 0),
-    Data = GetFunc(),
-    SaveFunc(Data);
-save_role_data(_, _Ets, _GetFunc, _SaveFunc) ->
-    skip.
-
 load_role_data(Id) ->
-    Fun = fun(Handle) -> load_role_data(Handle, Id) end,
-    lists:foreach(Fun, lib_role_handle:get_role_handles()).
-load_role_data(Handle, Id) ->
-    #role_handle{load_func = LoadFunc, put_func = PutFunc} = Handle,
-    Data = LoadFunc(Id),
-    PutFunc(Data, false).
+    load_role_data(Id, db_table:role_tables()).
+load_role_data(_Id, []) ->
+    ok;
+load_role_data(Id, [Tab|T]) ->
+    Data = db_mnesia:load_data(Tab, Id),
+    db_mnesia:set_data(Data),
+    load_role_data(Id, T).
 
-logout() ->
-    lib_role_listen:listen_role_logout(),
-    save_role_data().
+logout(Id) ->
+    lib_role_listen:listen_role_logout(Id).
