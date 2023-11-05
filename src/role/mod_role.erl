@@ -14,7 +14,7 @@
 -include("common.hrl").
 
 %% API
--export([get_process_name/1, start_link/1, get_pid/1, db_init/2, stop/1, logout/1]).
+-export([get_process_name/1, start_link/1, get_pid/1, stop/1, logout/1]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2, terminate/2,
@@ -53,13 +53,10 @@ stop(Id) ->
 -spec(init(Args :: term()) ->
     {ok, State :: #mod_role_state{}} | {ok, State :: #mod_role_state{}, timeout() | hibernate} |
     {stop, Reason :: term()} | ignore).
-init([_RoleId]) ->
-    {ok, #mod_role_state{}}.
-
-db_init(State, [Id]) ->
+init([Id]) ->
     load_role_data(Id),
     lib_role_listen:listen_role_login(Id),
-    {noreply, State}.
+    {ok, #mod_role_state{}}.
 
 %% @private
 %% @doc Handling call messages

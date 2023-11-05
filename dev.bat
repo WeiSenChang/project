@@ -8,6 +8,7 @@ goto wait_input
 :wait_input
     chcp 936
     echo =================
+    echo 生成记录   record
     echo 编译文件   make
     echo 启动服务   start
     echo 停止服务   stop
@@ -16,6 +17,7 @@ goto wait_input
     echo 退出脚本   quit
     echo =================
     set /p var=请输入指令:
+    if "%var%" == "record" goto record
     if "%var%" == "make" goto make
     if "%var%" == "start" goto start
     if "%var%" == "stop" goto stop
@@ -24,9 +26,13 @@ goto wait_input
     if "%var%" == "attach" goto attach
     goto wait_input
 
-:make
+:record
     set var=
     escript make_table.erl
+    goto wait_input
+
+:make
+    set var=
     rd /s /q "./ebin"
     md "./ebin"
     erl -noshell -s make all -s init stop
@@ -50,7 +56,9 @@ goto wait_input
 
 :attach
     set var=
-    start werl -setcookie '%cookie%' -name attach_%node% -remsh %node%
+    set tick=%date:~0,4%%date:~5,2%%date:~8,2%%time:~0,2%%time:~3,2%%time:~6,2%
+    echo %tick%
+    start werl -setcookie '%cookie%' -name attach_%tick%_%node% -remsh %node%
     goto wait_input
 
 :quit

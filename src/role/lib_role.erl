@@ -8,13 +8,18 @@
 %% API
 -export([
     get_role/1,
+    set_role/1,
     change_role_name/2
 ]).
-
-get_role(Id) ->
-    db_mnesia:get_data(?DB_ROLE, Id).
 
 change_role_name(Id, Name) ->
     Role = get_role(Id),
     NewRole = Role#role{name = Name},
-    db_mnesia:set_data(NewRole).
+    set_role(NewRole).
+
+
+get_role(Id) ->
+    db_mnesia:get_data(?DB_ROLE, Id).
+
+set_role(Role) ->
+    db_mnesia:set_data(Role).

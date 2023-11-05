@@ -12,18 +12,16 @@
 ]).
 
 u() ->
-    ?DEBUG("=== code reload begin ==="),
     {ok, FileList} = file:list_dir(?BEAM_PATH),
     Mods = get_change_mod(FileList),
     Fun = fun(Mod) -> u(Mod) end,
     lists:foreach(Fun, Mods),
-    ?DEBUG("=== code reload end   ==="),
+    ?INFO("reloads ~w", [Mods]),
     ok.
 
 u(Mod) ->
     code:purge(Mod),
-    code:load_file(Mod),
-    ?DEBUG("reload ~p", [Mod]).
+    code:load_file(Mod).
 
 get_change_mod(FileList) ->
     get_change_mod(FileList, []).
@@ -33,7 +31,7 @@ get_change_mod([File|T], Mods) ->
     Mods1 =
     case string:tokens(File, ".") of
         [StrMod, "beam"] ->
-            Mod = erlang:list_to_atom(StrMod),
+            Mod = lib_types:to_atom(StrMod),
             Vsn0 = get_file_vsn(StrMod),
             Vsn1 = get_code_vsn(Mod),
             case Vsn0 =/= Vsn1 of

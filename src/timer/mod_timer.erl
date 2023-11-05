@@ -12,16 +12,19 @@
 -behaviour(gen_server).
 
 -include("common.hrl").
--include("timer.hrl").
 
 %% API
 -export([start_link/0]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2, terminate/2,
-    code_change/3, db_init/2]).
+    code_change/3]).
 
 -define(SERVER, ?MODULE).
+
+-define(MIN_NTF_MODS, []).
+-define(HOUR_NTF_MODS, [mod_log]).
+-define(ZERO_NTF_MODS, []).
 
 -record(mod_timer_state, {}).
 
@@ -49,9 +52,6 @@ init([]) ->
     erlang:send_after(lib_timer:next_hour_time() * 1000, self(), hour),
     erlang:send_after(lib_timer:next_zero_time() * 1000, self(), zero),
     {ok, #mod_timer_state{}}.
-
-db_init(State = #mod_timer_state{}, _Args) ->
-    {noreply, State}.
 
 %% @private
 %% @doc Handling call messages
@@ -84,15 +84,15 @@ handle_cast(_Request, State = #mod_timer_state{}) ->
 
 handle_info(min, State = #mod_timer_state{}) ->
     erlang:send_after(lib_timer:next_min_time() * 1000, self(), min),
-    min(),
+    lists:foreach(fun(Mod) -> Mod:min() end, ?MIN_NTF_MODS),
     {noreply, State};
 handle_info(hour, State = #mod_timer_state{}) ->
     erlang:send_after(lib_timer:next_hour_time() * 1000, self(), hour),
-    hour(),
+    lists:foreach(fun(Mod) -> Mod:hour() end, ?HOUR_NTF_MODS),
     {noreply, State};
 handle_info(zero, State = #mod_timer_state{}) ->
     erlang:send_after(lib_timer:next_zero_time() * 1000, self(), zero),
-    zero(),
+    lists:foreach(fun(Mod) -> Mod:zero() end, ?ZERO_NTF_MODS),
     {noreply, State};
 handle_info(_Info, State = #mod_timer_state{}) ->
     {noreply, State}.
@@ -118,19 +118,3 @@ code_change(_OldVsn, State = #mod_timer_state{}, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
-min() ->
-    notify(?NOTIFY_MIN_MODS, min).
-
-hour() ->
-    erlang:garbage_collect(),
-    notify(?NOTIFY_HOUR_MODS, hour).
-
-zero() ->
-    notify(?NOTIFY_ZERO_MODS, zero).
-
-%%%%%%
-notify([], _Name) ->
-    ok;
-notify([Mod|T], Name) ->
-    Mod:Name(),
-    notify(T, Name).

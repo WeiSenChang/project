@@ -48,9 +48,7 @@ start_link(ProcessName, Mod, Args, Options) ->
 init([Mod, Args]) ->
     try
         put_callback_mod(Mod),
-        InitRet = Mod:init(Args),
-        cast(self(), {db_init, Args}),
-        InitRet
+        Mod:init(Args)
     catch
         _:Reason ->
             timer:sleep(1000),
@@ -64,7 +62,7 @@ handle_call(Request, From, State) ->
         do_call(Request, From, State)
     catch
         _:_Reason ->
-            ?DEBUG("~w", [_Reason]),
+            ?INFO("~w", [_Reason]),
             {reply, ok, State}
     end.
 
@@ -75,7 +73,7 @@ handle_cast(Request, State) ->
         do_cast(Request, State)
     catch
         _:_Reason ->
-            ?DEBUG("~w, ~w", [get_callback_mod(), _Reason]),
+            ?INFO("~w, ~w", [get_callback_mod(), _Reason]),
             {noreply, State}
     end.
 
@@ -86,7 +84,7 @@ handle_info(Info, State) ->
         do_info(Info, State)
     catch
         _:_Reason ->
-            ?DEBUG("~w", [_Reason]),
+            ?INFO("~w", [_Reason]),
             {noreply, State}
     end.
 
@@ -101,7 +99,7 @@ terminate(Reason, State) ->
         Mod:terminate(Reason, State)
     catch
         _:_StopReason ->
-            ?DEBUG("~w", [_StopReason]),
+            ?INFO("~w", [_StopReason]),
             skip
     end,
     {stop, Reason, State}.
@@ -148,11 +146,6 @@ do_cast(stop, State) ->
     {stop, normal, State};
 do_cast({stop, Reason}, State) ->
     {stop, Reason, State};
-
-%% 异步加载数据库
-do_cast({db_init, Args}, State) ->
-    Mod = get_callback_mod(),
-    Mod:db_init(State, Args);
 
 do_cast(Request, State) ->
     Mod = get_callback_mod(),

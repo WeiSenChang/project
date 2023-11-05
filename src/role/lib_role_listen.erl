@@ -7,31 +7,13 @@
 %% API
 -export([
     listen_role_login/1,
-    listen_role_logout/1,
-
-    listen_min_timer/1,
-    listen_hour_timer/1,
-    listen_zero_timer/1
+    listen_role_logout/1
 ]).
 
 listen_role_login(Id) ->
-    ?DEBUG("role login ~p", [Id]),
-    lib_role_manage:async_insert_online_role(Id),
+    mod_server:async_apply(mod_role_manage:get_pid(), fun lib_role_manage:insert_online_role/1, [Id]),
     ok.
 
 listen_role_logout(Id) ->
-    ?DEBUG("role logout ~p", [Id]),
-    lib_role_manage:async_remove_online_role(Id),
-    ok.
-
-listen_min_timer(Id) ->
-    ?DEBUG("role min timer ~p", [Id]),
-    ok.
-
-listen_hour_timer(Id) ->
-    ?DEBUG("role hour timer ~p", [Id]),
-    ok.
-
-listen_zero_timer(Id) ->
-    ?DEBUG("role zero timer ~p", [Id]),
+    mod_server:async_apply(mod_role_manage:get_pid(), fun lib_role_manage:remove_online_role/1, [Id]),
     ok.

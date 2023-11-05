@@ -12,13 +12,13 @@
 -behaviour(gen_server).
 
 -include("common.hrl").
+-include("db_table.hrl").
 
 %% API
--export([start_link/0, get_pid/0, db_init/2, stop/0, min/0, hour/0, zero/0]).
+-export([start_link/0, get_pid/0, stop/0]).
 
 %% gen_server callbacks
--export([init/1, handle_call/3, handle_cast/2, handle_info/2, terminate/2,
-    code_change/3]).
+-export([init/1, handle_call/3, handle_cast/2, handle_info/2, terminate/2, code_change/3]).
 
 -record(mod_role_manage_state, {}).
 
@@ -38,18 +38,6 @@ get_pid() ->
 stop() ->
     mod_server:sync_stop(get_pid()).
 
-min() ->
-    mod_server:async_apply(get_pid(), fun lib_role_manage:min/0, []),
-    ok.
-
-hour() ->
-    mod_server:async_apply(get_pid(), fun lib_role_manage:hour/0, []),
-    ok.
-
-zero() ->
-    mod_server:async_apply(get_pid(), fun lib_role_manage:zero/0, []),
-    ok.
-
 %%%===================================================================
 %%% gen_server callbacks
 %%%===================================================================
@@ -60,10 +48,8 @@ zero() ->
     {ok, State :: #mod_role_manage_state{}} | {ok, State :: #mod_role_manage_state{}, timeout() | hibernate} |
     {stop, Reason :: term()} | ignore).
 init([]) ->
+    lists:foreach(fun(Id) -> lib_role:get_role(Id) end, db_mnesia:all_keys(?DB_ROLE)),
     {ok, #mod_role_manage_state{}}.
-
-db_init(State, _Args) ->
-    {noreply, State}.
 
 %% @private
 %% @doc Handling call messages

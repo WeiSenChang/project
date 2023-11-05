@@ -13,7 +13,7 @@
 -behaviour(gen_server).
 
 %% API
--export([start_link/0, get_pid/0, db_init/2, stop/0]).
+-export([start_link/0, get_pid/0, stop/0]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2, terminate/2,
@@ -105,9 +105,6 @@ code_change(_OldVsn, State = #mod_friend_state{}, _Extra) ->
 %%%===================================================================
 get_pid() ->
     erlang:whereis(?SERVER).
-
-db_init(State, []) ->
-    {noreply, State}.
 
 stop() ->
     mod_server:sync_stop(get_pid()).

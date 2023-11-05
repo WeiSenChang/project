@@ -20,5 +20,4 @@ start() ->
     lib_server:start().
 
 stop() ->
-    lib_server:stop(),
     application:stop(server).

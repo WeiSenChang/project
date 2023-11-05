@@ -6,6 +6,7 @@
 
 %% API
 -export([
+    now/0,
     date_time/0,
     unix_time/0,
     unix_time/1,
@@ -20,12 +21,15 @@
     curr_zero_tick/0
 ]).
 
+now() ->
+    {T1, T2, T3} = erlang:timestamp(),
+    T1 * 1000000000000 + T2 * 1000000 + T3.
+
 date_time() ->
     erlang:localtime().
 
 unix_time() ->
-    Date = erlang:localtime(),
-    unix_time(Date).
+    unix_time(date_time()).
 
 unix_time(Date) ->
     {Day, {H, M, S}} = calendar:time_difference(start_date_time(), Date),

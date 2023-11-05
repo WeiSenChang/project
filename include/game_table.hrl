@@ -18,6 +18,7 @@ tables() ->
     [
         "role",
         "role_friend",
+        "role_cache",
 
         "uid"
     ].
@@ -27,9 +28,10 @@ table("role") ->
         fields = [
             #field{name = "id", type = ?INT},
             #field{name = "name", type = ?STRING},
-            #field{name = "money", type = ?FLOAT},
+            #field{name = "server_id", type = ?STRING},
+            #field{name = "server_name", type = ?STRING},
             #field{name = "account", type = ?STRING},
-            #field{name = "item_list", type = ?LIST, sub_type = "key_value"}
+            #field{name = "item_map", type = ?MAP, sub_type = "key_value"}
         ]
     };
 table("role_friend") ->
@@ -41,6 +43,16 @@ table("role_friend") ->
             #field{name = "black_list", type = ?LIST, sub_type = ?INT}
         ]
     };
+table("role_cache") ->
+    #table{name = "role_cache", key = "id", def = "DB_ROLE_CACHE", type = ?TAB_TYPE_ROLE,
+        fields = [
+            #field{name = "id", type = ?INT},
+            #field{name = "name", type = ?STRING},
+            #field{name = "server_id", type = ?INT},
+            #field{name = "server_name", type = ?STRING},
+            #field{name = "role_map", type = ?MAP, sub_type = "role"}
+        ]
+    };
 table("uid") ->
     #table{name = "uid", key = "key", def = "DB_UID", type = ?TAB_TYPE_SYS,
         fields = [
@@ -49,13 +61,14 @@ table("uid") ->
         ]
     };
 table(_) ->
-    ?UNDEFINED.
+    #table{}.
 
 
 fields("key_value") ->
     [
         #field{name = "key", type = ?INT},
-        #field{name = "value", type = ?INT}
+        #field{name = "value", type = ?INT},
+        #field{name = "other", type = ?LIST, sub_type = ?INT}
     ];
 fields(_) ->
     [].

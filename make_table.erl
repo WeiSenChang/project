@@ -74,6 +74,9 @@ set_map_value(?LIST, SubType, Name, Value, Map) ->
         ?STRING -> maps:put(lib_types:to_binary(Name), [lib_types:to_binary(V) || V <- Value], Map);
         _ -> maps:put(lib_types:to_binary(Name), [record_to_map(V) || V <- Value], Map)
     end;
+set_map_value(?MAP, SubType, Name, Value, Map) ->
+    List = maps:values(Value),
+    set_map_value(?LIST, SubType, Name, List, Map);
 set_map_value(_, _, Name, Value, Map) ->
     maps:put(lib_types:to_binary(Name), record_to_map(Value), Map).
 
@@ -106,6 +109,9 @@ get_map_value(?LIST, SubType, Name, Map) ->
         ?STRING -> [lib_types:to_list(V) || V <- lib_types:to_list(maps:get(lib_types:to_binary(Name), Map, []))];
         _ -> [map_to_record(V, SubType) || V <- lib_types:to_list(maps:get(lib_types:to_binary(Name), Map, []))]
     end;
+get_map_value(?MAP, SubType, Name, Map) ->
+    Value = get_map_value(?LIST, SubType, Name, Map),
+    lists:foldl(fun(V, Acc) -> K = element(2, V), maps:put(K, V, Acc) end, #{}, Value);
 get_map_value(Type, _, Name, Map) ->
     map_to_record(maps:get(lib_types:to_binary(Name), Map, #{}), Type).
 
@@ -119,10 +125,9 @@ get_field_value(Key, FieldMap) ->
 gen_erl_body() ->
     {_, Str1, Str2, Str3, Str4, RoleTabs, SysTabs} = lists:foldr(
         fun(TabName, {Acc0, Acc1, Acc2, Acc3, Acc4, Acc5, Acc6}) ->
-            #table{load_num = LoadNum, fields = Fields, key = Key, type = Type} = table(TabName),
+            #table{fields = Fields, key = Key, type = Type} = table(TabName),
             {NewAcc5, NewAcc6} = gen_tabs_str(Type, TabName, Acc5, Acc6),
-            TabStr = gen_tab_str(LoadNum, Key),
-            NewAcc1 = Acc1 ++ "get_table('" ++ TabName ++ "') ->\n\t" ++ TabStr ++ ";\n",
+            NewAcc1 = Acc1 ++ "get_table('" ++ TabName ++ "') ->\n\t#table{key = '" ++ Key ++ "'};\n",
             {AddAcc2, AddAcc3, AddAcc4, NewAcc0} = gen_fields_erl(TabName, Fields, Acc0),
             {NewAcc0, NewAcc1, Acc2 ++ AddAcc2, Acc3 ++ AddAcc3, Acc4 ++ AddAcc4, NewAcc5, NewAcc6}
         end, {#{}, "", "", "", "", [], []}, tables()),
@@ -150,11 +155,6 @@ gen_tabs_str(?TAB_TYPE_SYS, TabName, Acc5, Acc6) ->
     {Acc5, [TabName|Acc6]};
 gen_tabs_str(_, _, Acc5, Acc6) ->
     {Acc5, Acc6}.
-
-gen_tab_str(LoadNum, Key) when is_integer(LoadNum) ->
-    "#table{key = '" ++ Key ++ "', load_name = " ++ integer_to_list(LoadNum) ++ "}";
-gen_tab_str(_, Key) ->
-    "#table{key = '" ++ Key ++ "'}".
 
 gen_fields_erl(_Name, [], Map) ->
     {"", "", "", Map};
@@ -211,7 +211,19 @@ update_record_map(?FLOAT, _, Map) ->
 update_record_map(?STRING, _, Map) ->
     {Map, "undefined"};
 update_record_map(?LIST, SubType, Map) ->
-    update_record_map(SubType, SubType, Map);
+    case SubType of
+        ?INT -> {Map, "int"};
+        ?FLOAT -> {Map, "float"};
+        ?STRING -> {Map, "string"};
+        _ -> {maps:put(SubType, 1, Map), SubType}
+    end;
+update_record_map(?MAP, SubType, Map) ->
+    case SubType of
+        ?INT -> {Map, "int"};
+        ?FLOAT -> {Map, "float"};
+        ?STRING -> {Map, "string"};
+        _ -> {maps:put(SubType, 1, Map), SubType}
+    end;
 update_record_map(Type, _, Map) ->
     {maps:put(Type, 1, Map), Type}.
 
@@ -272,6 +284,14 @@ gen_hrl_field(#field{name = Name, type = ?STRING}, Map) ->
     {Map, Name ++ " = \"\""};
 gen_hrl_field(#field{name = Name, type = ?LIST, sub_type = SubType}, Map) ->
     Str = Name ++ " = []",
+    case SubType of
+        ?INT -> {Map, Str};
+        ?FLOAT -> {Map, Str};
+        ?STRING -> {Map, Str};
+        _ -> {maps:put(SubType, 1, Map), Str}
+    end;
+gen_hrl_field(#field{name = Name, type = ?MAP, sub_type = SubType}, Map) ->
+    Str = Name ++ " = #{}",
     case SubType of
         ?INT -> {Map, Str};
         ?FLOAT -> {Map, Str};

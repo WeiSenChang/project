@@ -12,22 +12,21 @@
 -ifndef('common_HRL').
 -define('common_HRL', true).
 
+-include("db_table.hrl").
+
 -define(INT, int).
 -define(FLOAT, float).
 -define(STRING, string).
 -define(LIST, list).
-
--define(TRUE, true).
--define(FALSE, false).
--define(UNDEFINED, undefined).
+-define(MAP, map).
 
 -define(TAB_TYPE_ROLE, "role").
 -define(TAB_TYPE_SYS, "sys").
 
--record(table, {name, key, type, def, load_num, fields}).
+-record(table, {name, key, type, def, fields}).
 -record(field, {name, type, sub_type, value}).
 
--define(DEBUG(Format), mod_log:msg(?MODULE, ?LINE, Format)).
--define(DEBUG(Format, Args), mod_log:msg(?MODULE, ?LINE, Format, Args)).
+-define(INFO(Format), mod_log:msg(?MODULE, ?LINE, Format, [])).
+-define(INFO(Format, Args), mod_log:msg(?MODULE, ?LINE, Format, Args)).
 
 -endif.
