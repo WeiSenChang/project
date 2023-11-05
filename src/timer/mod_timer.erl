@@ -84,14 +84,17 @@ handle_cast(_Request, State = #mod_timer_state{}) ->
 
 handle_info(min, State = #mod_timer_state{}) ->
     erlang:send_after(lib_timer:next_min_time() * 1000, self(), min),
+    ?INFO("min timer"),
     lists:foreach(fun(Mod) -> Mod:min() end, ?MIN_NTF_MODS),
     {noreply, State};
 handle_info(hour, State = #mod_timer_state{}) ->
     erlang:send_after(lib_timer:next_hour_time() * 1000, self(), hour),
+    ?INFO("hour timer"),
     lists:foreach(fun(Mod) -> Mod:hour() end, ?HOUR_NTF_MODS),
     {noreply, State};
 handle_info(zero, State = #mod_timer_state{}) ->
     erlang:send_after(lib_timer:next_zero_time() * 1000, self(), zero),
+    ?INFO("zero timer"),
     lists:foreach(fun(Mod) -> Mod:zero() end, ?ZERO_NTF_MODS),
     {noreply, State};
 handle_info(_Info, State = #mod_timer_state{}) ->

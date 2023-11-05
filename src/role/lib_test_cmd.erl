@@ -35,16 +35,14 @@ role_gm("change_name", _Par1, _Par2, _Par3, _Par4) ->
     maps:fold(
         fun(Id, _, _) ->
             mod_server:sync_apply(mod_role:get_pid(Id),
-                fun lib_role:change_role_name/2, [Id, "new_name" ++ lib_types:to_list(Id)])
+                fun lib_role:change_role_name/2, [Id, "wsc" ++ lib_types:to_list(Id)])
         end, ok, OnLineMap),
     EndTick = lib_timer:unix_time(),
     ?INFO("change name end, use time ~w s", [EndTick - StarTick]);
 role_gm("all_role_login", _Par1, _Par2, _Par3, _Par4) ->
     StarTick = lib_timer:unix_time(),
-    LoginList = lib_common:rand_from_list(db_mnesia:all_keys(?DB_ROLE), 100000, false),
-    SortList = lists:usort(LoginList),
     Fun = fun(Id) -> lib_role_login:login(Id) end,
-    lists:foreach(Fun, SortList),
+    lists:foreach(Fun, lists:seq(1, 1000)),
     EndTick = lib_timer:unix_time(),
     ?INFO("role login end, use time ~w s", [EndTick - StarTick]);
 role_gm("all_role_logout", _Par1, _Par2, _Par3, _Par4) ->
@@ -54,10 +52,19 @@ role_gm("all_role_logout", _Par1, _Par2, _Par3, _Par4) ->
     EndTick = lib_timer:unix_time(),
     ?INFO("role logout end, use time ~w s", [EndTick - StarTick]);
 role_gm("change", _Par1, _Par2, _Par3, _Par4) ->
-    Role = mod_server:sync_apply(mod_role:get_pid(1), fun lib_role:get_role/1, [1]),
-    KeyValue = #key_value{key = 1, value = 1},
+    OnLineMap = mod_server:sync_apply(mod_role_manage:get_pid(), fun lib_role_manage:get_online_map/0),
+    [Id] = lib_common:rand_from_list(maps:keys(OnLineMap), 1),
+    Role = mod_server:sync_apply(mod_role:get_pid(Id), fun lib_role:get_role/1, [Id]),
+    KeyValue = #key_value{key = Id, value = Id, other = [Id]},
     NewRole = Role#role{item_map = maps:put(KeyValue#key_value.key, KeyValue, Role#role.item_map)},
-    mod_server:async_apply(mod_role:get_pid(1), fun lib_role:set_role/1, [NewRole]);
+    mod_server:async_apply(mod_role:get_pid(Id), fun lib_role:set_role/1, [NewRole]);
+role_gm("friend", _Par1, _Par2, _Par3, _Par4) ->
+    OnLineMap = mod_server:sync_apply(mod_role_manage:get_pid(), fun lib_role_manage:get_online_map/0),
+    maps:foreach(
+        fun(Id, _) ->
+            mod_server:sync_apply(mod_role:get_pid(Id),
+                fun lib_role:friend/1, [Id])
+        end, OnLineMap);
 
 
 role_gm(Gm, _Par1, _Par2, _Par3, _Par4) ->

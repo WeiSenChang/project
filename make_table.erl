@@ -81,10 +81,9 @@ set_map_value(_, _, Name, Value, Map) ->
     maps:put(lib_types:to_binary(Name), record_to_map(Value), Map).
 
 map_to_record(Map, Name) ->
-    AtomName = lib_types:to_atom(Name),
-	FieldMap = get_field_map(AtomName),
+	FieldMap = get_field_map(Name),
 	NewFieldMap = map_to_field_map(Map, FieldMap),
-	field_map_to_record(AtomName, NewFieldMap).
+	field_map_to_record(Name, NewFieldMap).
 map_to_field_map(Map, FieldMap) ->
     maps:fold(
         fun(Name, Field, Acc) ->
@@ -111,9 +110,18 @@ get_map_value(?LIST, SubType, Name, Map) ->
     end;
 get_map_value(?MAP, SubType, Name, Map) ->
     Value = get_map_value(?LIST, SubType, Name, Map),
-    lists:foldl(fun(V, Acc) -> K = element(2, V), maps:put(K, V, Acc) end, #{}, Value);
+    lists:foldl(fun(V, Acc) -> maps:put(get_key(V), V, Acc) end, #{}, Value);
 get_map_value(Type, _, Name, Map) ->
     map_to_record(maps:get(lib_types:to_binary(Name), Map, #{}), Type).
+
+get_key(Record) ->
+    Tab = element(1, Record),
+    #table{key = KeyName} = get_table(Tab),
+    Map = db_table:record_to_map(Record),
+    FieldMap = get_field_map(Tab),
+    Field = maps:get(KeyName, FieldMap, #field{}),
+    get_map_value(Field, Map).
+
 
 set_field_value(Field, Value) ->
     Field#field{value = Value}.
@@ -122,14 +130,14 @@ get_field_value(Key, FieldMap) ->
     #field{value = Value} = maps:get(Key, FieldMap),
     Value.\n\n".
 
+
 gen_erl_body() ->
     {_, Str1, Str2, Str3, Str4, RoleTabs, SysTabs} = lists:foldr(
-        fun(TabName, {Acc0, Acc1, Acc2, Acc3, Acc4, Acc5, Acc6}) ->
-            #table{fields = Fields, key = Key, type = Type} = table(TabName),
-            {NewAcc5, NewAcc6} = gen_tabs_str(Type, TabName, Acc5, Acc6),
-            NewAcc1 = Acc1 ++ "get_table('" ++ TabName ++ "') ->\n\t#table{key = '" ++ Key ++ "'};\n",
-            {AddAcc2, AddAcc3, AddAcc4, NewAcc0} = gen_fields_erl(TabName, Fields, Acc0),
-            {NewAcc0, NewAcc1, Acc2 ++ AddAcc2, Acc3 ++ AddAcc3, Acc4 ++ AddAcc4, NewAcc5, NewAcc6}
+        fun(Name, {Acc0, Acc1, Acc2, Acc3, Acc4, Acc5, Acc6}) ->
+            #table{key = Key, type = Type, fields = Fields} = table(Name),
+            {NewAcc5, NewAcc6} = gen_tabs_str(Type, Name, Acc5, Acc6),
+            {AddAcc1, AddAcc2, AddAcc3, AddAcc4, NewAcc0} = gen_fields_erl(Fields, Name, Key, Acc0),
+            {NewAcc0, Acc1 ++ AddAcc1, Acc2 ++ AddAcc2, Acc3 ++ AddAcc3, Acc4 ++ AddAcc4, NewAcc5, NewAcc6}
         end, {#{}, "", "", "", "", [], []}, tables()),
     NewStr1 = Str1 ++ "get_table(_)->\n\t#table{}.\n\n",
     NewStr2 = Str2 ++ "get_fields(_) ->\n\t[].\n\n",
@@ -156,9 +164,11 @@ gen_tabs_str(?TAB_TYPE_SYS, TabName, Acc5, Acc6) ->
 gen_tabs_str(_, _, Acc5, Acc6) ->
     {Acc5, Acc6}.
 
-gen_fields_erl(_Name, [], Map) ->
-    {"", "", "", Map};
-gen_fields_erl(Name, Fields, Map) ->
+gen_fields_erl([], _Name, _Key, Map) ->
+    {"", "", "", "", Map};
+gen_fields_erl(Fields, Name, Key, Map) ->
+    KeyStr = ?TRY_CATCH(atom_to_list(Key), Key),
+    Str0 = "get_table('" ++ Name ++ "') ->\n\t#table{key = '" ++ KeyStr ++ "'};\n",
     Str1 = "get_fields(Record) when is_record(Record, '" ++ Name ++ "') ->\n",
     Str2 = "\t#'" ++ Name ++ "'{",
     Str3 = "\t[\n",
@@ -166,19 +176,19 @@ gen_fields_erl(Name, Fields, Map) ->
     Str5 = "field_map_to_record('" ++ Name ++ "', FieldMap) ->\n\t#'" ++ Name ++ "'{\n",
     {AddMap, NewStr2, NewStr3, NewStr4, NewStr5} = gen_fields_erl(#{}, Str2, Str3, Str4, Str5, 1, length(Fields), Fields),
     Str = Str1 ++ NewStr2 ++ NewStr3,
-    {AddStr, AddStr4, AddStr5, NewMap} = maps:fold(
-        fun(AddName, _, {AccAddStr, AccStr4, AccStr5, AccMap}) ->
+    {AddStr0, AddStr, AddStr4, AddStr5, NewMap} = maps:fold(
+        fun(AddName, _, {AccTabStr, AccAddStr, AccStr4, AccStr5, AccMap}) ->
             case maps:is_key(AddName, AccMap) of
                 false ->
                     NewAccMap0 = maps:put(AddName, 1, AccMap),
-                    AddFields = fields(AddName),
-                    {AddAccAddStr, AddAccStr4, AddAccStr5, NewAccMap1} = gen_fields_erl(AddName, AddFields, NewAccMap0),
-                    {AccAddStr ++ AddAccAddStr, AccStr4 ++ AddAccStr4, AccStr5 ++ AddAccStr5, NewAccMap1};
+                    #table{fields = AddFields, key = AddKey} = table(AddName),
+                    {AddTabStr, AddAccAddStr, AddAccStr4, AddAccStr5, NewAccMap1} = gen_fields_erl(AddFields, AddName, AddKey, NewAccMap0),
+                    {AccTabStr ++ AddTabStr, AccAddStr ++ AddAccAddStr, AccStr4 ++ AddAccStr4, AccStr5 ++ AddAccStr5, NewAccMap1};
                 _ ->
-                    {AccAddStr, AccStr4, AccStr5, AccMap}
+                    {AccTabStr, AccAddStr, AccStr4, AccStr5, AccMap}
             end
-        end, {"", "", "", Map}, AddMap),
-    {Str ++ AddStr, NewStr4 ++ AddStr4, NewStr5 ++ AddStr5, NewMap}.
+        end, {"", "", "", "", Map}, AddMap),
+    {Str0 ++ AddStr0, Str ++ AddStr, NewStr4 ++ AddStr4, NewStr5 ++ AddStr5, NewMap}.
 
 gen_fields_erl(AddMap, Str1, Str2, Str3, Str4, _, _, []) ->
     {AddMap, Str1, Str2, Str3, Str4};
@@ -260,7 +270,7 @@ gen_hrl_body(Name, Fields, Map) ->
             case maps:is_key(AddName, AccMap) of
                 false ->
                     NewAccMap0 = maps:put(AddName, 1, AccMap),
-                    AddFields = fields(AddName),
+                    #table{fields = AddFields} = table(AddName),
                     {Str, NewAccMap1} = gen_hrl_body(AddName, AddFields, NewAccMap0),
                     {Str ++ AccStr, NewAccMap1};
                 _ ->

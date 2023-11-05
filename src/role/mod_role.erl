@@ -112,13 +112,11 @@ code_change(_OldVsn, State = #mod_role_state{}, _Extra) ->
 %%% Internal functions
 %%%===================================================================
 load_role_data(Id) ->
-    load_role_data(Id, db_table:role_tables()).
-load_role_data(_Id, []) ->
-    ok;
-load_role_data(Id, [Tab|T]) ->
-    Data = db_mnesia:load_data(Tab, Id),
-    db_mnesia:set_data(Data),
-    load_role_data(Id, T).
+    lists:foreach(
+        fun(Tab) ->
+            Data = db_mnesia:load_data(Tab, Id),
+            db_mnesia:set_data(Data)
+        end, db_table:role_tables()).
 
 logout(Id) ->
     lib_role_listen:listen_role_logout(Id).

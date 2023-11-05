@@ -48,7 +48,11 @@ stop() ->
     {ok, State :: #mod_role_manage_state{}} | {ok, State :: #mod_role_manage_state{}, timeout() | hibernate} |
     {stop, Reason :: term()} | ignore).
 init([]) ->
-    lists:foreach(fun(Id) -> lib_role:get_role(Id) end, db_mnesia:all_keys(?DB_ROLE)),
+    lists:foreach(
+        fun(Id) ->
+            Data = db_mnesia:load_data(?DB_ROLE_CACHE, Id),
+            db_mnesia:set_data(Data)
+        end, db_mnesia:all_keys(?DB_ROLE_CACHE)),
     {ok, #mod_role_manage_state{}}.
 
 %% @private

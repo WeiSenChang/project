@@ -46,6 +46,7 @@ get_pid() ->
     {ok, State :: #mod_log_state{}} | {ok, State :: #mod_log_state{}, timeout() | hibernate} |
     {stop, Reason :: term()} | ignore).
 init([]) ->
+    move_old_log(),
     case open_log() of
         {ok, Fd} ->
             set_log_fd(Fd);
@@ -133,6 +134,22 @@ open_log() ->
     Fn = "./log/" ++ File ++ ".log",
     filelib:ensure_dir(Fn),
     file:open(Fn, [append]).
+
+move_old_log() ->
+    case file:list_dir_all("./log/") of
+        {ok, NameList} ->
+            File = lib_common:log_tab("log"),
+            Dir = "./history_log/" ++ File ++ "/",
+            filelib:ensure_dir(Dir),
+            lists:foreach(
+                fun(Name) ->
+                    SourceName = "./log/" ++ Name,
+                    DestinationName = Dir ++ Name,
+                    file:copy(SourceName, DestinationName),
+                    file:delete(SourceName)
+                end, NameList);
+        _ -> skip
+    end.
 
 
 hour() ->

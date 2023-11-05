@@ -23,10 +23,12 @@
 -define(TAB_TYPE_ROLE, "role").
 -define(TAB_TYPE_SYS, "sys").
 
--record(table, {name, key, type, def, fields}).
+-record(table, {name, key, type, def, fields = []}).
 -record(field, {name, type, sub_type, value}).
 
 -define(INFO(Format), mod_log:msg(?MODULE, ?LINE, Format, [])).
 -define(INFO(Format, Args), mod_log:msg(?MODULE, ?LINE, Format, Args)).
+
+-define(TRY_CATCH(Func, Ret), try Func catch _:_ -> Ret end).
 
 -endif.

@@ -24,53 +24,50 @@ tables() ->
     ].
 
 table("role") ->
-    #table{name = "role", key = "id", def = "DB_ROLE", type = ?TAB_TYPE_ROLE,
-        fields = [
-            #field{name = "id", type = ?INT},
-            #field{name = "name", type = ?STRING},
-            #field{name = "server_id", type = ?STRING},
-            #field{name = "server_name", type = ?STRING},
-            #field{name = "account", type = ?STRING},
-            #field{name = "item_map", type = ?MAP, sub_type = "key_value"}
-        ]
-    };
+    #table{name = "role", key = "id", def = "DB_ROLE", type = ?TAB_TYPE_ROLE, fields = [
+        #field{name = "id", type = ?INT},
+        #field{name = "name", type = ?STRING},
+        #field{name = "server_id", type = ?INT},
+        #field{name = "server_name", type = ?STRING},
+        #field{name = "account", type = ?STRING},
+        #field{name = "item_map", type = ?INT, sub_type = "key_value"},
+        #field{name = "item_list", type = ?LIST, sub_type = "key_value"}
+    ]};
 table("role_friend") ->
-    #table{name = "role_friend", key = "id", def = "DB_ROLE_FRIEND", type = ?TAB_TYPE_ROLE,
-        fields = [
-            #field{name = "id", type = ?INT},
-            #field{name = "friend_list", type = ?LIST, sub_type = "friend"},
-            #field{name = "apply_list", type = ?LIST, sub_type = ?INT},
-            #field{name = "black_list", type = ?LIST, sub_type = ?INT}
-        ]
-    };
+    #table{name = "role_friend", key = "id", def = "DB_ROLE_FRIEND", type = ?TAB_TYPE_ROLE, fields = [
+        #field{name = "id", type = ?INT},
+        #field{name = "friend_map", type = ?MAP, sub_type = "friend"},
+        #field{name = "apply_list", type = ?LIST, sub_type = ?INT},
+        #field{name = "black_list", type = ?LIST, sub_type = ?INT}
+    ]};
 table("role_cache") ->
-    #table{name = "role_cache", key = "id", def = "DB_ROLE_CACHE", type = ?TAB_TYPE_ROLE,
-        fields = [
-            #field{name = "id", type = ?INT},
-            #field{name = "name", type = ?STRING},
-            #field{name = "server_id", type = ?INT},
-            #field{name = "server_name", type = ?STRING},
-            #field{name = "role_map", type = ?MAP, sub_type = "role"}
-        ]
-    };
+    #table{name = "role_cache", key = "id", def = "DB_ROLE_CACHE", type = ?TAB_TYPE_ROLE, fields = [
+        #field{name = "id", type = ?INT},
+        #field{name = "name", type = ?STRING},
+        #field{name = "server_id", type = ?INT},
+        #field{name = "server_name", type = ?STRING}
+    ]};
 table("uid") ->
-    #table{name = "uid", key = "key", def = "DB_UID", type = ?TAB_TYPE_SYS,
-        fields = [
-            #field{name = "key", type = ?STRING},
-            #field{name = "id", type = ?INT}
-        ]
-    };
+    #table{name = "uid", key = "key", def = "DB_UID", type = ?TAB_TYPE_SYS, fields = [
+        #field{name = "key", type = ?STRING},
+        #field{name = "id", type = ?INT}
+    ]};
+table("key_value") ->
+    #table{name = "key_value", key = "key", fields = [
+        #field{name = "key", type = ?INT},
+        #field{name = "value", type = ?INT},
+        #field{name = "other", type = ?LIST, sub_type = ?INT}
+    ]};
+table("friend") ->
+    #table{name = "friend", key = "key", fields = [
+        #field{name = "key", type = ?INT},
+        #field{name = "value", type = ?STRING},
+        #field{name = "other", type = ?LIST, sub_type = ?STRING}
+    ]};
 table(_) ->
     #table{}.
 
 
-fields("key_value") ->
-    [
-        #field{name = "key", type = ?INT},
-        #field{name = "value", type = ?INT},
-        #field{name = "other", type = ?LIST, sub_type = ?INT}
-    ];
-fields(_) ->
-    [].
+
 
 -endif.

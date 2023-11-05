@@ -23,29 +23,33 @@
 
 to_integer(Value) when is_integer(Value) ->
     Value;
-to_integer(Value) when is_binary(Value) ->
-    binary_to_integer(Value);
-to_integer(Value) when is_list(Value) ->
-    list_to_integer(Value);
 to_integer(Value) when is_float(Value) ->
-    binary_to_integer(float_to_binary(Value));
+    round(Value);
+to_integer(Value) when is_binary(Value) ->
+    ?TRY_CATCH(binary_to_integer(Value), ?TRY_CATCH(round(binary_to_float(Value)), 0));
+to_integer(Value) when is_list(Value) ->
+    ?TRY_CATCH(list_to_integer(Value), ?TRY_CATCH(round(list_to_float(Value)), 0));
 to_integer(Value) when is_atom(Value) ->
-    binary_to_integer(atom_to_binary(Value));
+    BinValue = atom_to_binary(Value),
+    to_integer(BinValue);
 to_integer(Value) ->
-    binary_to_integer(term_to_binary(Value)).
+    BinValue = term_to_binary(Value),
+    to_integer(BinValue).
 
 to_float(Value) when is_float(Value) ->
     Value;
-to_float(Value) when is_binary(Value) ->
-    binary_to_float(Value);
-to_float(Value) when is_list(Value) ->
-    list_to_float(Value);
 to_float(Value) when is_integer(Value) ->
-    binary_to_float(integer_to_binary(Value));
+    Value + 0.0;
+to_float(Value) when is_binary(Value) ->
+    ?TRY_CATCH(binary_to_float(Value), ?TRY_CATCH(binary_to_integer(Value) + 0.0, 0));
+to_float(Value) when is_list(Value) ->
+    ?TRY_CATCH(list_to_float(Value), ?TRY_CATCH(list_to_integer(Value) + 0.0, 0));
 to_float(Value) when is_atom(Value) ->
-    binary_to_float(atom_to_binary(Value));
+    BinValue = atom_to_binary(Value),
+    to_float(BinValue);
 to_float(Value) ->
-    binary_to_float(term_to_binary(Value)).
+    BinValue = term_to_binary(Value),
+    to_float(BinValue).
 
 to_list(Value) when is_list(Value) ->
     Value;
