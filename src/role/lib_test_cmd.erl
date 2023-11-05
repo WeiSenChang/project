@@ -22,6 +22,8 @@ role_gm(Gm, Par1, Par2) ->
     role_gm(Gm, Par1, Par2, 0).
 role_gm(Gm, Par1, Par2, Par3) ->
     role_gm(Gm, Par1, Par2, Par3, 0).
+role_gm("test_time", Secs, _Par2, _Par3, _Par4) ->
+    mod_server:async_apply(mod_timer:get_pid(), fun mod_timer:set_secs/1, [Secs]);
 role_gm("create", Account, Num, _Par3, _Par4) ->
     StarTick = lib_timer:unix_time(),
     Fun = fun(_) -> lib_role_login:create(Account) end,

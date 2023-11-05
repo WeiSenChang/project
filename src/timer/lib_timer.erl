@@ -6,14 +6,15 @@
 
 %% API
 -export([
-    now/0,
-    date_time/0,
     unix_time/0,
-    unix_time/1,
+    to_unix_time/1,
+    to_local_time/1,
+
     minute_second/0,
     hour_second/0,
     day_second/0,
-    to_local_time/1,
+    start_date_time/0,
+
     next_min_time/0,
     next_hour_time/0,
     next_zero_time/0,
@@ -21,38 +22,25 @@
     curr_zero_tick/0
 ]).
 
-now() ->
-    {T1, T2, T3} = erlang:timestamp(),
-    T1 * 1000000000000 + T2 * 1000000 + T3.
-
-date_time() ->
-    erlang:localtime().
-
 unix_time() ->
-    unix_time(date_time()).
+    to_unix_time(calendar:now_to_local_time(erlang:timestamp())) + ?TRY_CATCH(mod_timer:pass_secs(), 0).
 
-unix_time(Date) ->
-    {Day, {H, M, S}} = calendar:time_difference(start_date_time(), Date),
-    Day * day_second() + H * hour_second() + M * minute_second() + S.
-
-minute_second() -> 60.
-hour_second() -> 3600.
-day_second() -> 86400.
+to_unix_time(Date) ->
+    calendar:datetime_to_gregorian_seconds(Date) - calendar:datetime_to_gregorian_seconds(start_date_time()).
 
 to_local_time(Tick) ->
-    Start = calendar:datetime_to_gregorian_seconds(start_date_time()),
-    calendar:gregorian_seconds_to_datetime(Start + Tick).
+    calendar:gregorian_seconds_to_datetime(Tick + calendar:datetime_to_gregorian_seconds(start_date_time())).
 
 next_min_time() ->
-    {_H, _M, S} = erlang:time(),
+    {_, {_H, _M, S}} = to_local_time(unix_time()),
     minute_second() - S.
 
 next_hour_time() ->
-    {_H, M, S} = erlang:time(),
+    {_, {_H, M, S}} = to_local_time(unix_time()),
     hour_second() - M * minute_second() - S.
 
 next_zero_time() ->
-    {H, M, S} = erlang:time(),
+    {_, {H, M, S}} = to_local_time(unix_time()),
     day_second() - H * hour_second() - M * minute_second() - S.
 
 next_zero_tick() ->
@@ -63,6 +51,14 @@ curr_zero_tick() ->
 
 %% 内部接口
 %%%%%%%%
-%% 系统开启日期时间
 start_date_time() ->
     {{1970, 1, 1}, {0, 0, 0}}.
+
+minute_second() ->
+    60.
+
+hour_second() ->
+    3600.
+
+day_second() ->
+    86400.
