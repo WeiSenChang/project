@@ -28,14 +28,12 @@ rand_from_list(List, Num, true) ->
         end, [], lists:seq(1, Num));
 rand_from_list(List, Num, false) ->
     Len = length(List),
-    ?INFO("~w", [{Len, Num}]),
     {RandList, _NewList} = lists:foldl(
         fun(_, {AccList0, AccList1}) ->
             N = rand:uniform(Len),
             Term = lists:nth(N, List),
             {[Term|AccList0], lists:delete(Term, AccList1)}
         end, {[], List}, lists:seq(1, Num)),
-    ?INFO("~w", [length(RandList)]),
     RandList;
 rand_from_list(List, Num, _IsDup) ->
     rand_from_list(List, Num, false).
