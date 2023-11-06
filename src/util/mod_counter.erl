@@ -42,7 +42,6 @@ start_link() ->
     {ok, State :: #mod_counter_state{}} | {ok, State :: #mod_counter_state{}, timeout() | hibernate} |
     {stop, Reason :: term()} | ignore).
 init([]) ->
-    erlang:send_after(10 * 1000, self(), save_data),
     [db_mnesia:set_data(Uid) || Uid <- lib_counter:load_all_uid()],
     {ok, #mod_counter_state{}}.
 
@@ -74,10 +73,6 @@ handle_cast(_Request, State = #mod_counter_state{}) ->
     {noreply, NewState :: #mod_counter_state{}} |
     {noreply, NewState :: #mod_counter_state{}, timeout() | hibernate} |
     {stop, Reason :: term(), NewState :: #mod_counter_state{}}).
-handle_info(save_data, State = #mod_counter_state{}) ->
-    erlang:send_after(10 * 1000, self(), save_data),
-    db_mnesia:save_data(),
-    {noreply, State};
 handle_info(_Info, State = #mod_counter_state{}) ->
     {noreply, State}.
 

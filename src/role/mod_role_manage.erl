@@ -48,7 +48,6 @@ stop() ->
     {ok, State :: #mod_role_manage_state{}} | {ok, State :: #mod_role_manage_state{}, timeout() | hibernate} |
     {stop, Reason :: term()} | ignore).
 init([]) ->
-    erlang:send_after(60 * 1000, self(), save_data),
     [db_mnesia:set_data(RoleCache) || RoleCache <- lib_role_manage:load_all_role_cache()],
     {ok, #mod_role_manage_state{}}.
 
@@ -80,10 +79,6 @@ handle_cast(_Request, State = #mod_role_manage_state{}) ->
     {noreply, NewState :: #mod_role_manage_state{}} |
     {noreply, NewState :: #mod_role_manage_state{}, timeout() | hibernate} |
     {stop, Reason :: term(), NewState :: #mod_role_manage_state{}}).
-handle_info(save_data, State = #mod_role_manage_state{}) ->
-    erlang:send_after(60 * 1000, self(), save_data),
-    db_mnesia:save_data(),
-    {noreply, State};
 handle_info(_Info, State = #mod_role_manage_state{}) ->
     {noreply, State}.
 

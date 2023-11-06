@@ -24,6 +24,7 @@
 -define(TAB_TYPE_SYS, "sys").
 
 -define(SAVE_MAP, save_map).
+-define(SAVE_TIMEOUT, 30 * 1000).
 
 -record(table, {name, key, type, def, fields = []}).
 -record(field, {name, type, sub_type, value}).

@@ -48,6 +48,7 @@ start_link(ProcessName, Mod, Args, Options) ->
 init([Mod, Args]) ->
     try
         put_callback_mod(Mod),
+        erlang:send_after(?SAVE_TIMEOUT, self(), save_data),
         Mod:init(Args)
     catch
         _:Reason ->
@@ -154,6 +155,12 @@ do_cast(Request, State) ->
 %% 处理停止进程的消息stop
 do_info(stop, State) ->
     {stop, normal, State};
+
+%% 处理保存进程数据的消息save
+do_info(save_data, State) ->
+    erlang:send_after(?SAVE_TIMEOUT, self(), save_data),
+    db_mnesia:save_data(),
+    {noreply, State};
 
 do_info(Info, State) ->
     Mod = get_callback_mod(),

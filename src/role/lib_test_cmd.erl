@@ -52,7 +52,7 @@ role_gm("change_name", _Par1, _Par2, _Par3, _Par4) ->
     maps:fold(
         fun(Id, _, _) ->
             mod_server:sync_apply(mod_role:get_pid(Id),
-                fun lib_role:change_role_name/2, [Id, "wsc" ++ lib_types:to_list(Id)])
+                fun lib_role:change_role_name/2, [Id, "weisenchang" ++ lib_types:to_list(Id)])
         end, ok, OnLineMap),
     EndTick = lib_timer:unix_time(),
     ?DEBUG("change name end, use time ~w s", [EndTick - StarTick]);
