@@ -14,12 +14,15 @@
 -include("common.hrl").
 
 %% API
--export([start_link/0, msg/4, async_msg/1, get_pid/0, hour/0, async_hour/0]).
+-export([start_link/0, info_msg/4, debug_msg/4, async_msg/2, get_pid/0, hour/0, async_hour/0]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2, terminate/2, code_change/3]).
 
 -define(SERVER, ?MODULE).
+
+-define(LOG_LEVEL_DEBUG, 0).
+-define(LOG_LEVEL_INFO, 1).
 
 -record(mod_log_state, {}).
 
@@ -108,25 +111,38 @@ code_change(_OldVsn, State = #mod_log_state{}, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
-msg(Mod, Line, Format, Args) ->
-    NewFormat = "[~.2.0w:~.2.0w:~.2.0w][~w][~w:~w] " ++ Format ++ "~n",
+debug_msg(Mod, Line, Format, Args) ->
+    Log = gen_log(Mod, Line, Format, Args, "DEBUG"),
+    mod_server:async_apply(mod_log:get_pid(), fun mod_log:async_msg/2, [Log, ?LOG_LEVEL_DEBUG]).
+
+info_msg(Mod, Line, Format, Args) ->
+    Log = gen_log(Mod, Line, Format, Args, "INFO"),
+    mod_server:async_apply(mod_log:get_pid(), fun mod_log:async_msg/2, [Log, ?LOG_LEVEL_INFO]).
+
+gen_log(Mod, Line, Format, Args, LogLevel) ->
+    NewFormat = "[~.2.0w:~.2.0w:~.2.0w][~w][~w:~w][" ++ LogLevel ++ "] " ++ Format ++ "~n",
     {_Date, {H, M, S}} = lib_timer:to_local_time(lib_timer:unix_time()),
     NewArgs = [H, M, S, self(), Mod, Line | Args],
-    Log = io_lib:format(NewFormat, NewArgs),
-    mod_server:async_apply(mod_log:get_pid(), fun mod_log:async_msg/1, [Log]).
+    io_lib:format(NewFormat, NewArgs).
 
-async_msg(Log) ->
-    case get_log_fd() of
-        undefined ->
-            case open_log() of
-                {ok, NewFd} ->
-                    set_log_fd(NewFd),
-                    io:format(NewFd, "~ts", [Log]);
-                _ ->
-                    skip
-            end;
-        Fd ->
-            io:format(Fd, "~ts", [Log])
+async_msg(Log, LogLevel) ->
+    try
+        io:format(Log),
+        ?JUDGE_RETURN(LogLevel > ?LOG_LEVEL_DEBUG, -1),
+        case get_log_fd() of
+            undefined ->
+                case open_log() of
+                    {ok, NewFd} ->
+                        set_log_fd(NewFd),
+                        io:format(NewFd, "~ts", [Log]);
+                    _ ->
+                        skip
+                end;
+            Fd ->
+                io:format(Fd, "~ts", [Log])
+        end
+    catch
+        _ -> skip
     end.
 
 open_log() ->

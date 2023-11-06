@@ -43,7 +43,7 @@ start_link() ->
     {ok, State :: #mod_friend_state{}} | {ok, State :: #mod_friend_state{}, timeout() | hibernate} |
     {stop, Reason :: term()} | ignore).
 init([]) ->
-    erlang:send_after(60 * 1000, self(), save),
+    erlang:send_after(60 * 1000, self(), save_data),
     {ok, #mod_friend_state{}}.
 
 %% @private
@@ -74,9 +74,9 @@ handle_cast(_Request, State = #mod_friend_state{}) ->
     {noreply, NewState :: #mod_friend_state{}} |
     {noreply, NewState :: #mod_friend_state{}, timeout() | hibernate} |
     {stop, Reason :: term(), NewState :: #mod_friend_state{}}).
-handle_info(save, State = #mod_friend_state{}) ->
-    erlang:send_after(60 * 1000, self(), save),
-%%    save_friend_data(),
+handle_info(save_data, State = #mod_friend_state{}) ->
+    erlang:send_after(60 * 1000, self(), save_data),
+    db_mnesia:save_data(),
     {noreply, State};
 handle_info(_Info, State = #mod_friend_state{}) ->
     {noreply, State}.
@@ -89,6 +89,7 @@ handle_info(_Info, State = #mod_friend_state{}) ->
 -spec(terminate(Reason :: (normal | shutdown | {shutdown, term()} | term()),
     State :: #mod_friend_state{}) -> term()).
 terminate(_Reason, _State = #mod_friend_state{}) ->
+    db_mnesia:save_data(),
     ok.
 
 %% @private

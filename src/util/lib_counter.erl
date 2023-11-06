@@ -10,11 +10,15 @@
 
 %% API
 -export([
+    load_all_uid/0,
     get_role_id/0,
     get_mail_id/0
 ]).
 
 -export([sync_get_id/1]).
+
+load_all_uid() ->
+    db_mnesia:load_all_data(?DB_UID).
 
 %% 获取唯一id接口
 %%%%%%%%%%%

@@ -8,13 +8,17 @@
 
 %% API
 -export([
+    load_all_role_cache/0,
     insert_online_role/1,
     remove_online_role/1,
     get_online_map/0,
     set_online_map/1,
-    get_role_cache/1,
-    set_role_cache/1
+    get_role_cache/1
 ]).
+
+load_all_role_cache() ->
+    db_mnesia:load_all_data(?DB_ROLE_CACHE).
+
 
 insert_online_role(Id) ->
     OnlineMap = get_online_map(),
@@ -35,6 +39,3 @@ set_online_map(OnlineMap) ->
 
 get_role_cache(Id) ->
     db_mnesia:get_data(?DB_ROLE_CACHE, Id).
-
-set_role_cache(RoleCache) ->
-    db_mnesia:set_data(RoleCache).

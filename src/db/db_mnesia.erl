@@ -16,21 +16,30 @@
 -export([
     init_db/0,
     all_keys/1,
-    get_data/2,
-    set_data/1,
-    save_data/1,
+    load_all_data/1,
     load_data/2,
+    save_data/0,
+    save_data/1,
     delete_data/2
 ]).
+
+-export([get_data/2, set_data/1]).
 
 all_keys(Tab) ->
     #table{key = KeyName} = db_table:get_table(Tab),
     FieldMap = db_table:get_field_map(Tab),
     Field = maps:get(KeyName, FieldMap),
-    Fun = fun() -> mnesia:all_keys(Tab) end,
-    case mnesia:transaction(Fun) of
+    case mnesia:transaction(fun() -> mnesia:all_keys(Tab) end) of
         {atomic, Keys} ->
             [db_table:get_map_value(Field, KeyMap) || KeyMap <- Keys];
+        _ ->
+            []
+    end.
+
+load_all_data(Tab) ->
+    case mnesia:transaction(fun() -> mnesia:all_keys(Tab) end) of
+        {atomic, Keys} ->
+            [load_data_1(Tab, KeyMap) || KeyMap <- Keys];
         _ ->
             []
     end.
@@ -40,13 +49,25 @@ load_data(Tab, Key) ->
     FieldMap = db_table:get_field_map(Tab),
     Field = maps:get(KeyName, FieldMap),
     KeyMap = key_to_map(Field, Key),
-    Fun = fun() -> mnesia:read({Tab, KeyMap}) end,
-    case mnesia:transaction(Fun) of
+    load_data_1(Tab, KeyMap).
+
+load_data_1(Tab, KeyMap) ->
+    case mnesia:transaction(fun() -> mnesia:read({Tab, KeyMap}) end) of
         {atomic, [{Tab, KeyMap, DataMap}]} ->
             db_table:map_to_record(DataMap, Tab);
         _ ->
             db_table:map_to_record(KeyMap, Tab)
     end.
+
+save_data() ->
+    SaveMap = get_save_map(),
+    set_save_map(#{}),
+    maps:foreach(
+        fun({Tab, Key}, _) ->
+            Data = get_data(Tab, Key),
+            save_data(Data)
+        end, SaveMap).
+
 
 save_data(Data) ->
     Tab = element(1, Data),
@@ -56,9 +77,7 @@ save_data(Data) ->
     Field = maps:get(KeyName, FieldMap),
     Key = db_table:get_map_value(Field, DataMap),
     KeyMap = key_to_map(Field, Key),
-    Fun = fun() -> mnesia:write({Tab, KeyMap, DataMap}) end,
-    mnesia:transaction(Fun),
-    ?INFO("save ~w ~ts success", [Tab, lib_types:to_list(Key)]).
+    mnesia:transaction(fun() -> mnesia:write({Tab, KeyMap, DataMap}) end).
 
 
 delete_data(Tab, Key) ->
@@ -66,8 +85,7 @@ delete_data(Tab, Key) ->
     FieldMap = db_table:get_field_map(Tab),
     Field = maps:get(KeyName, FieldMap),
     KeyMap = key_to_map(Field, Key),
-    Fun = fun() -> mnesia:delete({Tab, KeyMap}) end,
-    mnesia:transaction(Fun).
+    mnesia:transaction(fun() -> mnesia:delete({Tab, KeyMap}) end).
 
 key_to_map(Field, Key) ->
     NewField = db_table:set_field_value(Field, Key),
@@ -116,10 +134,31 @@ set_data(Data) ->
     FieldMap = db_table:get_field_map(Tab),
     Field = maps:get(KeyName, FieldMap),
     Key = db_table:get_map_value(Field, DataMap),
-    OldDataMap = erlang:put({Tab, Key}, DataMap),
-    if
-        OldDataMap =/= DataMap andalso OldDataMap =/= undefined ->
-            save_data(Data);
+    OldData = get_old_data(Tab, Key),
+    erlang:put({Tab, Key}, DataMap),
+    case OldData =/= Data of
         true ->
+            SaveMap = get_save_map(),
+            set_save_map(maps:put({Tab, Key}, 1, SaveMap));
+        _ ->
             skip
     end.
+
+get_old_data(Tab, Key) ->
+    case erlang:get({Tab, Key}) of
+        undefined ->
+            load_data(Tab, Key);
+        DataMap ->
+            db_table:map_to_record(DataMap, Tab)
+    end.
+
+
+
+get_save_map() ->
+    case erlang:get(?SAVE_MAP) of
+        undefined -> #{};
+        SaveMap -> SaveMap
+    end.
+
+set_save_map(SaveMap) ->
+    erlang:put(?SAVE_MAP, SaveMap).

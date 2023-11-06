@@ -12,7 +12,7 @@
 -behaviour(gen_server).
 
 %% API
--export([start_link/0, db_init/2, get_pid/0]).
+-export([start_link/0, get_pid/0]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2, terminate/2,
@@ -42,6 +42,8 @@ start_link() ->
     {ok, State :: #mod_counter_state{}} | {ok, State :: #mod_counter_state{}, timeout() | hibernate} |
     {stop, Reason :: term()} | ignore).
 init([]) ->
+    erlang:send_after(10 * 1000, self(), save_data),
+    [db_mnesia:set_data(Uid) || Uid <- lib_counter:load_all_uid()],
     {ok, #mod_counter_state{}}.
 
 %% @private
@@ -72,6 +74,10 @@ handle_cast(_Request, State = #mod_counter_state{}) ->
     {noreply, NewState :: #mod_counter_state{}} |
     {noreply, NewState :: #mod_counter_state{}, timeout() | hibernate} |
     {stop, Reason :: term(), NewState :: #mod_counter_state{}}).
+handle_info(save_data, State = #mod_counter_state{}) ->
+    erlang:send_after(10 * 1000, self(), save_data),
+    db_mnesia:save_data(),
+    {noreply, State};
 handle_info(_Info, State = #mod_counter_state{}) ->
     {noreply, State}.
 
@@ -83,6 +89,7 @@ handle_info(_Info, State = #mod_counter_state{}) ->
 -spec(terminate(Reason :: (normal | shutdown | {shutdown, term()} | term()),
     State :: #mod_counter_state{}) -> term()).
 terminate(_Reason, _State = #mod_counter_state{}) ->
+    db_mnesia:save_data(),
     ok.
 
 %% @private
@@ -96,8 +103,5 @@ code_change(_OldVsn, State = #mod_counter_state{}, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
-db_init(State, _Args) ->
-    {noreply, State}.
-
 get_pid() ->
     whereis(?SERVER).

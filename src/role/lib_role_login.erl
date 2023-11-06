@@ -14,7 +14,7 @@
 
 create(Account) ->
     Id = lib_counter:get_role_id(),
-    Role = #role{id = Id, account = Account},
+    Role = #role{id = Id, account = Account, name = Account ++ lib_types:to_list(Id)},
     db_mnesia:save_data(Role),
     Id.
 
