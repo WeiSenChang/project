@@ -5,8 +5,8 @@
 -include("common.hrl").
 -include("db_table.hrl").
 
--define(COUNTER_ROLE_ID, role_id).
--define(COUNTER_MAIL_ID, mail_id).
+-define(COUNTER_ROLE_ID, "role_id").
+-define(COUNTER_MAIL_ID, "mail_id").
 
 %% API
 -export([
