@@ -39,9 +39,15 @@ role_gm("test_time", Secs, _Par2, _Par3, _Par4) ->
     end,
     mod_server:async_apply(mod_timer:get_pid(), fun mod_timer:set_secs/1, [NewSecs]);
 
-role_gm("create", Account, Num, _Par3, _Par4) ->
+role_gm("create", Num, _, _Par3, _Par4) ->
     StarTick = lib_timer:unix_time(),
-    Fun = fun(_) -> lib_role_login:create(Account) end,
+    Fun =
+        fun(_) ->
+            Id = lib_role_login:create("wsc"),
+            lib_role_login:login(Id),
+            mod_server:sync_apply(mod_role:get_pid(Id),
+                fun lib_role:change_role_name/2, [Id, "wsc" ++ lib_types:to_list(Id)])
+        end,
     lists:foreach(Fun, lists:seq(1, Num)),
     EndTick = lib_timer:unix_time(),
     ?DEBUG("create role end, use time ~w s", [EndTick - StarTick]);
@@ -68,13 +74,6 @@ role_gm("all_role_logout", _Par1, _Par2, _Par3, _Par4) ->
     maps:foreach(fun(Id, _) -> lib_role_login:logout(Id) end, OnLineMap),
     EndTick = lib_timer:unix_time(),
     ?DEBUG("role logout end, use time ~w s", [EndTick - StarTick]);
-role_gm("change", _Par1, _Par2, _Par3, _Par4) ->
-    OnLineMap = mod_server:sync_apply(mod_role_manage:get_pid(), fun lib_role_manage:get_online_map/0),
-    [Id] = lib_common:rand_from_list(maps:keys(OnLineMap), 1),
-    Role = mod_server:sync_apply(mod_role:get_pid(Id), fun lib_role:get_role/1, [Id]),
-    KeyValue = #key_value{key = Id, value = Id, other = [Id]},
-    NewRole = Role#role{item_map = maps:put(KeyValue#key_value.key, KeyValue, Role#role.item_map)},
-    mod_server:async_apply(mod_role:get_pid(Id), fun lib_role:set_role/1, [NewRole]);
 role_gm("friend", _Par1, _Par2, _Par3, _Par4) ->
     OnLineMap = mod_server:sync_apply(mod_role_manage:get_pid(), fun lib_role_manage:get_online_map/0),
     maps:foreach(

@@ -48,7 +48,7 @@ stop() ->
     {ok, State :: #mod_role_manage_state{}} | {ok, State :: #mod_role_manage_state{}, timeout() | hibernate} |
     {stop, Reason :: term()} | ignore).
 init([]) ->
-    [db_mnesia:set_data(RoleCache) || RoleCache <- lib_role_manage:load_all_role_cache()],
+    [lib_role_manage:set_role_cache(RoleCache) || RoleCache <- lib_role_manage:load_all_role_cache()],
     {ok, #mod_role_manage_state{}}.
 
 %% @private

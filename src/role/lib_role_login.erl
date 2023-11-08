@@ -12,9 +12,9 @@
     logout/1
 ]).
 
-create(Account) ->
+create(Name) ->
     Id = lib_counter:get_role_id(),
-    Role = #role{id = Id, account = Account, name = Account ++ lib_types:to_list(Id)},
+    Role = #role{id = Id, name = Name},
     db_mnesia:save_data(Role),
     Id.
 

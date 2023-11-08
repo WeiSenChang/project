@@ -20,8 +20,8 @@
 -define(LIST, list).
 -define(MAP, map).
 
--define(TAB_TYPE_ROLE, "role").
--define(TAB_TYPE_SYS, "sys").
+-define(TAB_TYPE_ROLE, "role").     %% role process table
+-define(TAB_TYPE_SYS, "sys").       %% sys process table
 
 -define(SAVE_MAP, save_map).
 -define(SAVE_TIMEOUT, 30 * 1000).

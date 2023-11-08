@@ -14,14 +14,12 @@
 
 -record(uid, {key = "", id = 0}).
 
--record(role_cache, {id = 0, name = "", server_id = 0, server_name = ""}).
+-record(role_cache, {id = 0, name = "", level = 0, career = 0}).
 
 -record(role_friend, {id = 0, friend_map = #{}, apply_list = [], black_list = []}).
 
 -record(friend, {key = 0, value = "", other = []}).
 
--record(role, {id = 0, name = "", server_id = 0, server_name = "", account = "", item_map = 0, item_list = []}).
-
--record(key_value, {key = 0, value = 0, other = []}).
+-record(role, {id = 0, name = "", level = 0, career = 0, exp = 0}).
 
 -endif.

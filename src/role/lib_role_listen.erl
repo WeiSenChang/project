@@ -25,6 +25,6 @@ listen_change_name(Id) ->
     ok.
 
 update_role_cache(Id) ->
-    #role{name = Name, server_id = ServerId, server_name = ServerName} = lib_role:get_role(Id),
-    RoleCache = #role_cache{id = Id, name = Name, server_id = ServerId, server_name = ServerName},
-    mod_server:async_apply(mod_role_manage:get_pid(), fun db_mnesia:set_data/1, [RoleCache]).
+    #role{name = Name, level = Level, career = Career} = lib_role:get_role(Id),
+    RoleCache = #role_cache{id = Id, name = Name, level = Level, career = Career},
+    mod_server:async_apply(mod_role_manage:get_pid(), fun lib_role_manage:set_role_cache/1, [RoleCache]).
