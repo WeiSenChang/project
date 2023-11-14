@@ -8,6 +8,8 @@
 -export([
     unix_time/0,
     to_unix_time/1,
+    to_date_time/1,
+    to_date_time/2,
     to_local_time/1,
 
     minute_second/0,
@@ -28,8 +30,15 @@ unix_time() ->
 to_unix_time(Date) ->
     calendar:datetime_to_gregorian_seconds(Date) - calendar:datetime_to_gregorian_seconds(start_date_time()).
 
+to_date_time(Tick) ->
+    to_date_time(Tick, 0).
+
+to_date_time(Tick, X) ->
+    NewTick = Tick + X * hour_second(),
+    calendar:gregorian_seconds_to_datetime(NewTick + calendar:datetime_to_gregorian_seconds(start_date_time())).
+
 to_local_time(Tick) ->
-    calendar:gregorian_seconds_to_datetime(Tick + calendar:datetime_to_gregorian_seconds(start_date_time())).
+    to_date_time(Tick, 8).
 
 next_min_time() ->
     {_, {_H, _M, S}} = to_local_time(unix_time()),
