@@ -48,6 +48,7 @@ start_link(ProcessName, Mod, Args, Options) ->
 init([Mod, Args]) ->
     try
         put_callback_mod(Mod),
+        erlang:process_flag(trap_exit, true),
         erlang:send_after(?SAVE_TIMEOUT, self(), save_data),
         Mod:init(Args)
     catch
