@@ -37,7 +37,7 @@ table("role") ->
 table("role_friend") ->
     #table{name = "role_friend", key = "id", def = "DB_ROLE_FRIEND", type = ?TAB_TYPE_ROLE, fields = [
         #field{name = "id", type = ?INT},
-        #field{name = "friend_map", type = ?MAP, sub_type = "friend"},
+        #field{name = "friend_list", type = ?LIST, sub_type = "friend"},
         #field{name = "apply_list", type = ?LIST, sub_type = ?INT},
         #field{name = "black_list", type = ?LIST, sub_type = ?INT}
     ]};

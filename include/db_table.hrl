@@ -12,14 +12,37 @@
 -define(DB_ROLE, role).
 
 
--record(uid, {key = "", id = 0}).
+-record(uid, {
+	key = "", 
+	id = 0 
+}).
 
--record(role_cache, {id = 0, name = "", level = 0, career = 0}).
+-record(role_cache, {
+	id = 0, 
+	name = "", 
+	level = 0, 
+	career = 0 
+}).
 
--record(role_friend, {id = 0, friend_map = #{}, apply_list = [], black_list = []}).
+-record(role_friend, {
+	id = 0, 
+	friend_list = [], % [#'friend'{}]
+	apply_list = [], % [integer()]
+	black_list = [] % [integer()]
+}).
 
--record(friend, {key = 0, value = "", other = []}).
+-record(friend, {
+	key = 0, 
+	value = "", 
+	other = [] % [string()]
+}).
 
--record(role, {id = 0, name = "", level = 0, career = 0, exp = 0}).
+-record(role, {
+	id = 0, 
+	name = "", 
+	level = 0, 
+	career = 0, 
+	exp = 0 
+}).
 
 -endif.

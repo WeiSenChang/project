@@ -97,6 +97,7 @@ handle_info(Info, State) ->
 terminate(Reason, State) ->
     Mod = get_callback_mod(),
     try
+        db_mnesia:save_data(),
         Mod:terminate(Reason, State)
     catch
         _:_StopReason ->

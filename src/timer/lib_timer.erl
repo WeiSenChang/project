@@ -9,7 +9,7 @@
     unix_time/0,
     to_unix_time/1,
     to_date_time/1,
-    to_date_time/2,
+    to_date_time/3,
     to_local_time/1,
 
     minute_second/0,
@@ -25,20 +25,30 @@
 ]).
 
 unix_time() ->
-    to_unix_time(calendar:now_to_local_time(erlang:timestamp())) + ?TRY_CATCH(mod_timer:pass_secs(), 0).
+    {M, S, _} = erlang:timestamp(),
+    M * 1000000 + S + ?TRY_CATCH(mod_timer:pass_secs(), 0).
 
 to_unix_time(Date) ->
     calendar:datetime_to_gregorian_seconds(Date) - calendar:datetime_to_gregorian_seconds(start_date_time()).
 
 to_date_time(Tick) ->
-    to_date_time(Tick, 0).
+    to_date_time(Tick, 0, 0).
 
-to_date_time(Tick, X) ->
-    NewTick = Tick + X * hour_second(),
+to_date_time(Tick, H, M) ->
+    NewTick = Tick + H * hour_second() + M * minute_second(),
     calendar:gregorian_seconds_to_datetime(NewTick + calendar:datetime_to_gregorian_seconds(start_date_time())).
 
 to_local_time(Tick) ->
-    to_date_time(Tick, 8).
+    Tick0 = to_unix_time(calendar:now_to_universal_time(erlang:timestamp())),
+    Tick1 = to_unix_time(calendar:now_to_local_time(erlang:timestamp())),
+    case Tick1 >= Tick0 of
+        true ->
+            {H, M, _} = calendar:seconds_to_time(Tick1 - Tick0),
+            to_date_time(Tick, H, M);
+        _ ->
+            {H, M, _} = calendar:seconds_to_time(Tick0 - Tick1),
+            to_date_time(Tick, -H, -M)
+    end.
 
 next_min_time() ->
     {_, {_H, _M, S}} = to_local_time(unix_time()),

@@ -44,9 +44,6 @@ set_map_value(?LIST, SubType, Name, Value, Map) ->
         ?STRING -> maps:put(lib_types:to_binary(Name), [lib_types:to_binary(V) || V <- Value], Map);
         _ -> maps:put(lib_types:to_binary(Name), [record_to_map(V) || V <- Value], Map)
     end;
-set_map_value(?MAP, SubType, Name, Value, Map) ->
-    List = maps:values(Value),
-    set_map_value(?LIST, SubType, Name, List, Map);
 set_map_value(_, _, Name, Value, Map) ->
     maps:put(lib_types:to_binary(Name), record_to_map(Value), Map).
 
@@ -78,20 +75,8 @@ get_map_value(?LIST, SubType, Name, Map) ->
         ?STRING -> [lib_types:to_list(V) || V <- lib_types:to_list(maps:get(lib_types:to_binary(Name), Map, []))];
         _ -> [map_to_record(V, SubType) || V <- lib_types:to_list(maps:get(lib_types:to_binary(Name), Map, []))]
     end;
-get_map_value(?MAP, SubType, Name, Map) ->
-    Value = get_map_value(?LIST, SubType, Name, Map),
-    lists:foldl(fun(V, Acc) -> maps:put(get_key(V), V, Acc) end, #{}, Value);
 get_map_value(Type, _, Name, Map) ->
     map_to_record(maps:get(lib_types:to_binary(Name), Map, #{}), Type).
-
-get_key(Record) ->
-    Tab = element(1, Record),
-    #table{key = KeyName} = get_table(Tab),
-    Map = db_table:record_to_map(Record),
-    FieldMap = get_field_map(Tab),
-    Field = maps:get(KeyName, FieldMap, #field{}),
-    get_map_value(Field, Map).
-
 
 set_field_value(Field, Value) ->
     Field#field{value = Value}.
@@ -134,10 +119,10 @@ get_fields(Record) when is_record(Record, 'role_cache') ->
 		#field{name = 'career', type = 'int', sub_type = 'undefined', value = F4}
 	];
 get_fields(Record) when is_record(Record, 'role_friend') ->
-	#'role_friend'{'id' = F1, 'friend_map' = F2, 'apply_list' = F3, 'black_list' = F4} = Record,
+	#'role_friend'{'id' = F1, 'friend_list' = F2, 'apply_list' = F3, 'black_list' = F4} = Record,
 	[
 		#field{name = 'id', type = 'int', sub_type = 'undefined', value = F1},
-		#field{name = 'friend_map', type = 'map', sub_type = 'friend', value = F2},
+		#field{name = 'friend_list', type = 'list', sub_type = 'friend', value = F2},
 		#field{name = 'apply_list', type = 'list', sub_type = 'int', value = F3},
 		#field{name = 'black_list', type = 'list', sub_type = 'int', value = F4}
 	];
@@ -175,7 +160,7 @@ get_field_map('role_cache') ->
 get_field_map('role_friend') ->
 	#{
 		'id' => #field{name = 'id', type = 'int', sub_type = 'undefined'},
-		'friend_map' => #field{name = 'friend_map', type = 'map', sub_type = 'friend'},
+		'friend_list' => #field{name = 'friend_list', type = 'list', sub_type = 'friend'},
 		'apply_list' => #field{name = 'apply_list', type = 'list', sub_type = 'int'},
 		'black_list' => #field{name = 'black_list', type = 'list', sub_type = 'int'}
 	};
@@ -211,7 +196,7 @@ field_map_to_record('role_cache', FieldMap) ->
 field_map_to_record('role_friend', FieldMap) ->
 	#'role_friend'{
 		'id' = get_field_value('id', FieldMap),
-		'friend_map' = get_field_value('friend_map', FieldMap),
+		'friend_list' = get_field_value('friend_list', FieldMap),
 		'apply_list' = get_field_value('apply_list', FieldMap),
 		'black_list' = get_field_value('black_list', FieldMap)
 	};

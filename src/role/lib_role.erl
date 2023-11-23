@@ -23,7 +23,7 @@ change_role_name(Id, Name) ->
 friend(Id) ->
     Friend = db_mnesia:get_data(?DB_ROLE_FRIEND, Id),
     Value = #friend{key = -1, value = "wsc" ++ lib_types:to_list(-1), other = ["---asdsadasasd"]},
-    NewFriend = Friend#role_friend{friend_map = maps:put(-1, Value, Friend#role_friend.friend_map)},
+    NewFriend = Friend#role_friend{friend_list = lists:keystore(-1, #friend.key, Friend#role_friend.friend_list, Value)},
     db_mnesia:set_data(NewFriend).
 
 

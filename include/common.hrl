@@ -18,13 +18,12 @@
 -define(FLOAT, float).
 -define(STRING, string).
 -define(LIST, list).
--define(MAP, map).
 
 -define(TAB_TYPE_ROLE, "role").     %% role process table
 -define(TAB_TYPE_SYS, "sys").       %% sys process table
 
 -define(SAVE_MAP, save_map).
--define(SAVE_TIMEOUT, 30 * 1000).
+-define(SAVE_TIMEOUT, 5 * 60 * 1000).
 
 -record(table, {name, key, type, def, fields = []}).
 -record(field, {name, type, sub_type, value}).

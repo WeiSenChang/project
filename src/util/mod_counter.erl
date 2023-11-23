@@ -84,7 +84,6 @@ handle_info(_Info, State = #mod_counter_state{}) ->
 -spec(terminate(Reason :: (normal | shutdown | {shutdown, term()} | term()),
     State :: #mod_counter_state{}) -> term()).
 terminate(_Reason, _State = #mod_counter_state{}) ->
-    db_mnesia:save_data(),
     ok.
 
 %% @private

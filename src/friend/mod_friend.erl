@@ -84,7 +84,6 @@ handle_info(_Info, State = #mod_friend_state{}) ->
 -spec(terminate(Reason :: (normal | shutdown | {shutdown, term()} | term()),
     State :: #mod_friend_state{}) -> term()).
 terminate(_Reason, _State = #mod_friend_state{}) ->
-    db_mnesia:save_data(),
     ok.
 
 %% @private

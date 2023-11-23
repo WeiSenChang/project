@@ -74,9 +74,6 @@ set_map_value(?LIST, SubType, Name, Value, Map) ->
         ?STRING -> maps:put(lib_types:to_binary(Name), [lib_types:to_binary(V) || V <- Value], Map);
         _ -> maps:put(lib_types:to_binary(Name), [record_to_map(V) || V <- Value], Map)
     end;
-set_map_value(?MAP, SubType, Name, Value, Map) ->
-    List = maps:values(Value),
-    set_map_value(?LIST, SubType, Name, List, Map);
 set_map_value(_, _, Name, Value, Map) ->
     maps:put(lib_types:to_binary(Name), record_to_map(Value), Map).
 
@@ -108,20 +105,8 @@ get_map_value(?LIST, SubType, Name, Map) ->
         ?STRING -> [lib_types:to_list(V) || V <- lib_types:to_list(maps:get(lib_types:to_binary(Name), Map, []))];
         _ -> [map_to_record(V, SubType) || V <- lib_types:to_list(maps:get(lib_types:to_binary(Name), Map, []))]
     end;
-get_map_value(?MAP, SubType, Name, Map) ->
-    Value = get_map_value(?LIST, SubType, Name, Map),
-    lists:foldl(fun(V, Acc) -> maps:put(get_key(V), V, Acc) end, #{}, Value);
 get_map_value(Type, _, Name, Map) ->
     map_to_record(maps:get(lib_types:to_binary(Name), Map, #{}), Type).
-
-get_key(Record) ->
-    Tab = element(1, Record),
-    #table{key = KeyName} = get_table(Tab),
-    Map = db_table:record_to_map(Record),
-    FieldMap = get_field_map(Tab),
-    Field = maps:get(KeyName, FieldMap, #field{}),
-    get_map_value(Field, Map).
-
 
 set_field_value(Field, Value) ->
     Field#field{value = Value}.
@@ -227,13 +212,6 @@ update_record_map(?LIST, SubType, Map) ->
         ?STRING -> {Map, "string"};
         _ -> {maps:put(SubType, 1, Map), SubType}
     end;
-update_record_map(?MAP, SubType, Map) ->
-    case SubType of
-        ?INT -> {Map, "int"};
-        ?FLOAT -> {Map, "float"};
-        ?STRING -> {Map, "string"};
-        _ -> {maps:put(SubType, 1, Map), SubType}
-    end;
 update_record_map(Type, _, Map) ->
     {maps:put(Type, 1, Map), Type}.
 
@@ -262,7 +240,7 @@ gen_hrl_header() ->
 gen_hrl_body(_Name, [], Map) ->
     {"", Map};
 gen_hrl_body(Name, Fields, Map) ->
-    Str0 = "\n-record(" ++ Name ++ ", {",
+    Str0 = "\n-record(" ++ Name ++ ", {\n",
     {AddMap, Str1} = gen_hrl_body(#{}, "", 1, length(Fields), Fields),
     Str2 = Str0 ++ Str1 ++ "}).\n",
     {Str3, NewMap} = maps:fold(
@@ -281,32 +259,24 @@ gen_hrl_body(Name, Fields, Map) ->
 gen_hrl_body(AddMap, Str, _, _, []) ->
     {AddMap, Str};
 gen_hrl_body(AddMap, Str, Index, Len, [Field|T]) ->
-    {NewAddMap, FieldStr} = gen_hrl_field(Field, AddMap),
-    SplitStr = if Index >= Len -> ""; true -> ", " end,
-    gen_hrl_body(NewAddMap, Str ++ FieldStr ++ SplitStr, Index + 1, Len, T).
+    {NewAddMap, FieldStr, CommentStr} = gen_hrl_field(Field, AddMap),
+    SplitStr = if Index >= Len -> " "; true -> ", " end,
+    gen_hrl_body(NewAddMap, Str ++ FieldStr ++ SplitStr ++ CommentStr, Index + 1, Len, T).
 
 %%
 gen_hrl_field(#field{name = Name, type = ?INT}, Map) ->
-    {Map, Name ++ " = 0"};
+    {Map, "\t" ++ Name ++ " = 0", "\n"};
 gen_hrl_field(#field{name = Name, type = ?FLOAT}, Map) ->
-    {Map, Name ++ " = 0.0"};
+    {Map, "\t" ++ Name ++ " = 0.0", "\n"};
 gen_hrl_field(#field{name = Name, type = ?STRING}, Map) ->
-    {Map, Name ++ " = \"\""};
+    {Map, "\t" ++ Name ++ " = \"\"", "\n"};
 gen_hrl_field(#field{name = Name, type = ?LIST, sub_type = SubType}, Map) ->
-    Str = Name ++ " = []",
+    Str = "\t" ++ Name ++ " = []",
     case SubType of
-        ?INT -> {Map, Str};
-        ?FLOAT -> {Map, Str};
-        ?STRING -> {Map, Str};
-        _ -> {maps:put(SubType, 1, Map), Str}
-    end;
-gen_hrl_field(#field{name = Name, type = ?MAP, sub_type = SubType}, Map) ->
-    Str = Name ++ " = #{}",
-    case SubType of
-        ?INT -> {Map, Str};
-        ?FLOAT -> {Map, Str};
-        ?STRING -> {Map, Str};
-        _ -> {maps:put(SubType, 1, Map), Str}
+        ?INT -> {Map, Str, "% [integer()]\n"};
+        ?FLOAT -> {Map, Str, "% [float()]\n"};
+        ?STRING -> {Map, Str, "% [string()]\n"};
+        _ -> {maps:put(SubType, 1, Map), Str, "% [#'" ++ SubType ++ "'{}]\n"}
     end;
 gen_hrl_field(#field{name = Name, type = Type}, Map) ->
-    {maps:put(Type, 1, Map), Name ++ " = undefined"}.
+    {maps:put(Type, 1, Map), "\t" ++ Name ++ " = undefined", "% #'" ++ Type ++ "'{}\n"}.
