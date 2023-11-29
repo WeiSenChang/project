@@ -13,18 +13,19 @@
 ]).
 
 create(Name) ->
-    Id = lib_counter:get_role_id(),
-    Role = #role{id = Id, name = Name},
-    db_mnesia:save_data(Role),
-    Id.
+    RoleId = lib_counter:get_role_id(),
+    Role = #db_role{role_id = RoleId, name = Name},
+    db_mnesia:save_data(?DB_ROLE, RoleId, Role),
+    RoleId.
 
-login(Id) ->
-    RegName = mod_role:get_process_name(Id),
-    server_sup:start_child(RegName, mod_role, transient, [Id]),
+login(RoleId) ->
+    RegName = mod_role:get_process_name(RoleId),
+    server_sup:start_child(RegName, mod_role, transient, [RoleId]),
     ok.
 
-logout(Id) ->
-    mod_server:sync_apply(mod_role:get_pid(Id), fun mod_role:logout/1, [Id]),
-    server_sup:terminate_child(mod_role:get_process_name(Id)),
-    server_sup:delete_child(mod_role:get_process_name(Id)),
+logout(RoleId) ->
+    mod_server:sync_apply(mod_role:get_pid(RoleId), fun mod_role:logout/1, [RoleId]),
+    server_sup:terminate_child(mod_role:get_process_name(RoleId)),
+    server_sup:delete_child(mod_role:get_process_name(RoleId)),
+    db_mnesia:erase_role_cache(RoleId),
     ok.

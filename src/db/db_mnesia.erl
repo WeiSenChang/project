@@ -11,6 +11,7 @@
 -author("weisenchang").
 
 -include("common.hrl").
+-include("db.hrl").
 
 %% API
 -export([
@@ -19,77 +20,12 @@
     load_all_data/1,
     load_data/2,
     save_data/0,
-    save_data/1,
-    delete_data/2
+    save_data/3,
+    delete_data/2,
+    erase_role_cache/1
 ]).
 
--export([get_data/2, set_data/1]).
-
-all_keys(Tab) ->
-    #table{key = KeyName} = db_table:get_table(Tab),
-    FieldMap = db_table:get_field_map(Tab),
-    Field = maps:get(KeyName, FieldMap),
-    case mnesia:transaction(fun() -> mnesia:all_keys(Tab) end) of
-        {atomic, Keys} ->
-            [db_table:get_map_value(Field, KeyMap) || KeyMap <- Keys];
-        _ ->
-            []
-    end.
-
-load_all_data(Tab) ->
-    case mnesia:transaction(fun() -> mnesia:all_keys(Tab) end) of
-        {atomic, Keys} ->
-            [load_data_1(Tab, KeyMap) || KeyMap <- Keys];
-        _ ->
-            []
-    end.
-
-load_data(Tab, Key) ->
-    #table{key = KeyName} = db_table:get_table(Tab),
-    FieldMap = db_table:get_field_map(Tab),
-    Field = maps:get(KeyName, FieldMap),
-    KeyMap = key_to_map(Field, Key),
-    load_data_1(Tab, KeyMap).
-
-load_data_1(Tab, KeyMap) ->
-    case mnesia:transaction(fun() -> mnesia:read({Tab, KeyMap}) end) of
-        {atomic, [{Tab, KeyMap, DataMap}]} ->
-            db_table:map_to_record(DataMap, Tab);
-        _ ->
-            db_table:map_to_record(KeyMap, Tab)
-    end.
-
-save_data() ->
-    SaveMap = get_save_map(),
-    set_save_map(#{}),
-    maps:foreach(
-        fun({Tab, Key}, _) ->
-            Data = get_data(Tab, Key),
-            save_data(Data)
-        end, SaveMap).
-
-
-save_data(Data) ->
-    Tab = element(1, Data),
-    #table{key = KeyName} = db_table:get_table(Tab),
-    DataMap = db_table:record_to_map(Data),
-    FieldMap = db_table:get_field_map(Tab),
-    Field = maps:get(KeyName, FieldMap),
-    Key = db_table:get_map_value(Field, DataMap),
-    KeyMap = key_to_map(Field, Key),
-    mnesia:transaction(fun() -> mnesia:write({Tab, KeyMap, DataMap}) end).
-
-
-delete_data(Tab, Key) ->
-    #table{key = KeyName} = db_table:get_table(Tab),
-    FieldMap = db_table:get_field_map(Tab),
-    Field = maps:get(KeyName, FieldMap),
-    KeyMap = key_to_map(Field, Key),
-    mnesia:transaction(fun() -> mnesia:delete({Tab, KeyMap}) end).
-
-key_to_map(Field, Key) ->
-    NewField = db_table:set_field_value(Field, Key),
-    db_table:set_map_value(NewField, #{}).
+-export([get_data/2, get_all_data/1, set_data/3]).
 
 
 init_db() ->
@@ -97,6 +33,73 @@ init_db() ->
     mnesia:start(),
     create_tables().
 
+all_keys(Tab) ->
+    Field = get_key_field(Tab),
+    case mnesia:transaction(fun() -> mnesia:all_keys(Tab) end) of
+        {atomic, Keys} ->
+            [get_map_value(Field, KeyMap) || KeyMap <- Keys];
+        _ ->
+            []
+    end.
+
+load_all_data(Tab) ->
+    case mnesia:transaction(fun() -> mnesia:all_keys(Tab) end) of
+        {atomic, Keys} ->
+            [do_load_data(Tab, KeyMap) || KeyMap <- Keys];
+        _ ->
+            []
+    end.
+
+load_data(Tab, Key) ->
+    KeyMap = key_to_key_map(Tab, Key),
+    do_load_data(Tab, KeyMap).
+
+save_data() ->
+    SaveMap = get_save_map(),
+    set_save_map(#{}),
+    maps:foreach(
+        fun({Tab, Key}, _) ->
+            Data = get_data(Tab, Key),
+            save_data(Tab, Key, Data)
+        end, SaveMap).
+
+save_data(Tab, Key, Data) ->
+    DataMap = record_to_map(Data),
+    KeyMap = key_to_key_map(Tab, Key),
+    mnesia:transaction(fun() -> mnesia:write({Tab, KeyMap, DataMap}) end).
+
+delete_data(Tab, Key) ->
+    KeyMap = key_to_key_map(Tab, Key),
+    mnesia:transaction(fun() -> mnesia:delete({Tab, KeyMap}) end).
+
+get_data(Tab, Key) ->
+    case ets:lookup(?ETS(Tab), Key) of
+        [{Key, DataMap}] ->
+            map_to_record(DataMap, Tab);
+        _ ->
+            undefined
+    end.
+
+get_all_data(Tab) ->
+    ets:foldr(fun({_, DataMap}, Acc) -> [map_to_record(DataMap, Tab) | Acc] end, [], ?ETS(Tab)).
+
+set_data(Tab, Key, Data) ->
+    DataMap = record_to_map(Data),
+    OldDataMap = get_data(Tab, Key),
+    ets:insert(?ETS(Tab), {Key, DataMap}),
+    case OldDataMap =/= DataMap of
+        true ->
+            SaveMap = get_save_map(),
+            set_save_map(maps:put({Tab, Key}, 1, SaveMap));
+        _ ->
+            ignore
+    end.
+
+erase_role_cache(RoleId) ->
+    RoleTabs = db_table:role_tables(),
+    lists:foreach(fun(Tab) -> ets:delete(?ETS(Tab), RoleId) end, RoleTabs).
+
+%%%%%%%%%%%%%
 init_mnesia() ->
     case mnesia:system_info(use_dir) of
         false ->
@@ -109,49 +112,92 @@ create_tables() ->
     HasTabL = mnesia:system_info(tables),
     TabL = db_table:role_tables() ++ db_table:sys_tables(),
     CreateTabL = lists:subtract(TabL, HasTabL),
-    create_tables(CreateTabL),
+    lists:foreach(
+        fun(Tab) ->
+            mnesia:create_table(Tab, [{disc_only_copies, [node()]}])
+        end, CreateTabL),
     mnesia:wait_for_tables(CreateTabL, 1000).
-create_tables([]) ->
-    ok;
-create_tables([Tab|T]) ->
-    mnesia:create_table(Tab, [{disc_only_copies, [node()]}]),
-    create_tables(T).
 
-get_data(Tab, Key) ->
-    case erlang:get({Tab, Key}) of
-        undefined ->
-            DbData = load_data(Tab, Key),
-            set_data(DbData),
-            DbData;
-        DataMap ->
-            db_table:map_to_record(DataMap, Tab)
-    end.
-
-set_data(Data) ->
-    Tab = element(1, Data),
-    #table{key = KeyName} = db_table:get_table(Tab),
-    DataMap = db_table:record_to_map(Data),
-    FieldMap = db_table:get_field_map(Tab),
-    Field = maps:get(KeyName, FieldMap),
-    Key = db_table:get_map_value(Field, DataMap),
-    OldData = get_old_data(Tab, Key),
-    erlang:put({Tab, Key}, DataMap),
-    case OldData =/= Data of
-        true ->
-            SaveMap = get_save_map(),
-            set_save_map(maps:put({Tab, Key}, 1, SaveMap));
+do_load_data(Tab, KeyMap) ->
+    case mnesia:transaction(fun() -> mnesia:read({Tab, KeyMap}) end) of
+        {atomic, [{Tab, KeyMap, DataMap}]} ->
+            Key = key_map_to_key(Tab, KeyMap),
+            ets:insert(?ETS(Tab), {Key, DataMap});
         _ ->
-            skip
+            ignore
     end.
 
-get_old_data(Tab, Key) ->
-    case erlang:get({Tab, Key}) of
-        undefined ->
-            load_data(Tab, Key);
-        DataMap ->
-            db_table:map_to_record(DataMap, Tab)
-    end.
+key_to_key_map(Tab, Key) ->
+    Field = get_key_field(Tab),
+    set_map_value(Field#field{value = Key}, #{}).
 
+key_map_to_key(Tab, KeyMap) ->
+    Field = get_key_field(Tab),
+    get_map_value(Field, KeyMap).
+
+
+record_to_map(Record)->
+    Fields = db_table:get_fields(Record),
+    lists:foldl(
+        fun(Field, Acc) ->
+            set_map_value(Field, Acc)
+        end, #{}, Fields).
+
+set_map_value(Field, Map) ->
+    #field{name = Name, type = Type, sub_type = SubType, value = Value} = Field,
+    set_map_value(Type, SubType, Name, Value, Map).
+set_map_value(?INT, _, Name, Value, Map) ->
+    maps:put(lib_types:to_binary(Name), lib_types:to_integer(Value), Map);
+set_map_value(?FLOAT, _, Name, Value, Map) ->
+    maps:put(lib_types:to_binary(Name), lib_types:to_float(Value), Map);
+set_map_value(?STRING, _, Name, Value, Map) ->
+    maps:put(lib_types:to_binary(Name), lib_types:to_binary(Value), Map);
+set_map_value(?LIST, SubType, Name, Value, Map) ->
+    case SubType of
+        ?INT -> maps:put(lib_types:to_binary(Name), Value, Map);
+        ?FLOAT -> maps:put(lib_types:to_binary(Name), Value, Map);
+        ?STRING -> maps:put(lib_types:to_binary(Name), [lib_types:to_binary(V) || V <- Value], Map);
+        _ -> maps:put(lib_types:to_binary(Name), [record_to_map(V) || V <- Value], Map)
+    end;
+set_map_value(_, _, Name, Value, Map) ->
+    maps:put(lib_types:to_binary(Name), record_to_map(Value), Map).
+
+map_to_record(Map, Name) ->
+    FieldMap = db_table:get_field_map(Name),
+    NewFieldMap = map_to_field_map(Map, FieldMap),
+    db_table:field_map_to_record(Name, NewFieldMap).
+map_to_field_map(Map, FieldMap) ->
+    maps:fold(
+        fun(Name, Field, Acc) ->
+            Value = get_map_value(Field, Map),
+            NewField = Field#field{value = Value},
+            maps:put(Name, NewField, Acc)
+        end, #{}, FieldMap).
+
+get_map_value(Field, Map) ->
+    #field{name = Name, type = Type, sub_type = SubType} = Field,
+    get_map_value(Type, SubType, Name, Map).
+get_map_value(?INT, _, Name, Map) ->
+    lib_types:to_integer(maps:get(lib_types:to_binary(Name), Map, 0));
+get_map_value(?FLOAT, _, Name, Map) ->
+    lib_types:to_float(maps:get(lib_types:to_binary(Name), Map, 0.0));
+get_map_value(?STRING, _, Name, Map) ->
+    lib_types:to_list(maps:get(lib_types:to_binary(Name), Map, ""));
+get_map_value(?LIST, SubType, Name, Map) ->
+    case SubType of
+        ?INT -> [lib_types:to_integer(V) || V <- lib_types:to_list(maps:get(lib_types:to_binary(Name), Map, []))];
+        ?FLOAT -> [lib_types:to_float(V) || V <- lib_types:to_list(maps:get(lib_types:to_binary(Name), Map, []))];
+        ?STRING -> [lib_types:to_list(V) || V <- lib_types:to_list(maps:get(lib_types:to_binary(Name), Map, []))];
+        _ -> [map_to_record(V, SubType) || V <- lib_types:to_list(maps:get(lib_types:to_binary(Name), Map, []))]
+    end;
+get_map_value(Type, _, Name, Map) ->
+    map_to_record(maps:get(lib_types:to_binary(Name), Map, #{}), Type).
+
+
+get_key_field(Tab) ->
+    #table{key = Key} = db_table:get_table(Tab),
+    FieldMap = db_table:get_field_map(Tab),
+    maps:get(Key, FieldMap).
 
 
 get_save_map() ->

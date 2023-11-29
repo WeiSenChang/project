@@ -12,44 +12,48 @@
 -ifndef('game_table_HRL').
 -define('game_table_HRL', true).
 
--include("common.hrl").
+-include("db.hrl").
 
 %% db tables
 tables() ->
     [
-        "role",
-        "role_friend",
-        "role_cache",
+        "db_role",
+        "db_role_friend",
+        "db_role_cache",
 
-        "uid"
+        "db_uid"
     ].
 
 
 %% db table
-table("role") ->
-    #table{name = "role", key = "id", def = "DB_ROLE", type = ?TAB_TYPE_ROLE, fields = [
-        #field{name = "id", type = ?INT},
+table("db_role") ->
+    #table{name = "db_role", key = "role_id", def = "DB_ROLE", type = ?TAB_TYPE_ROLE, fields = [
+        #field{name = "role_id", type = ?INT},
         #field{name = "name", type = ?STRING},
         #field{name = "level", type = ?INT},
         #field{name = "career", type = ?INT},
-        #field{name = "exp", type = ?INT}
+        #field{name = "exp", type = ?INT},
+        #field{name = "is_online", type = ?INT},
+        #field{name = "offline_tick", type = ?INT}
     ]};
-table("role_friend") ->
-    #table{name = "role_friend", key = "id", def = "DB_ROLE_FRIEND", type = ?TAB_TYPE_ROLE, fields = [
-        #field{name = "id", type = ?INT},
-        #field{name = "friend_list", type = ?LIST, sub_type = "friend"},
+table("db_role_friend") ->
+    #table{name = "db_role_friend", key = "role_id", def = "DB_ROLE_FRIEND", type = ?TAB_TYPE_ROLE, fields = [
+        #field{name = "role_id", type = ?INT},
+        #field{name = "friend_list", type = ?LIST, sub_type = "r_friend"},
         #field{name = "apply_list", type = ?LIST, sub_type = ?INT},
         #field{name = "black_list", type = ?LIST, sub_type = ?INT}
     ]};
-table("role_cache") ->
-    #table{name = "role_cache", key = "id", def = "DB_ROLE_CACHE", type = ?TAB_TYPE_SYS, fields = [
-        #field{name = "id", type = ?INT},
+table("db_role_cache") ->
+    #table{name = "db_role_cache", key = "role_id", def = "DB_ROLE_CACHE", type = ?TAB_TYPE_SYS, fields = [
+        #field{name = "role_id", type = ?INT},
         #field{name = "name", type = ?STRING},
         #field{name = "level", type = ?INT},
-        #field{name = "career", type = ?INT}
+        #field{name = "career", type = ?INT},
+        #field{name = "is_online", type = ?INT},
+        #field{name = "offline_tick", type = ?INT}
     ]};
-table("uid") ->
-    #table{name = "uid", key = "key", def = "DB_UID", type = ?TAB_TYPE_SYS, fields = [
+table("db_uid") ->
+    #table{name = "db_uid", key = "key", def = "DB_UID", type = ?TAB_TYPE_SYS, fields = [
         #field{name = "key", type = ?STRING},
         #field{name = "id", type = ?INT}
     ]};
@@ -58,16 +62,20 @@ table("uid") ->
 
 
 %% db record
-table("key_value") ->
-    #table{name = "key_value", key = "key", fields = [
+table("r_kv") ->
+    #table{fields = [
         #field{name = "key", type = ?INT},
-        #field{name = "value", type = ?INT},
-        #field{name = "other", type = ?LIST, sub_type = ?INT}
+        #field{name = "value", type = ?INT}
     ]};
-table("friend") ->
-    #table{name = "friend", key = "key", fields = [
+table("r_kv_float") ->
+    #table{fields = [
         #field{name = "key", type = ?INT},
-        #field{name = "value", type = ?STRING},
+        #field{name = "float", type = ?FLOAT}
+    ]};
+table("r_friend") ->
+    #table{fields = [
+        #field{name = "role_id", type = ?INT},
+        #field{name = "role_name", type = ?STRING},
         #field{name = "other", type = ?LIST, sub_type = ?STRING}
     ]};
 table(_) ->

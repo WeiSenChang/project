@@ -3,81 +3,59 @@
 -author("weisenchang").
 
 -include("common.hrl").
+-include("db_table.hrl").
+-include("role.hrl").
 
 %% API
 -export([
     load_all_role_cache/0,
-    insert_online_role/1,
-    remove_online_role/1,
     get_online_map/0,
-    set_online_map/1,
+    get_offline_map/0,
     get_role_cache/1,
     set_role_cache/1,
-    set_name_id_map/1,
     get_name_id_map/0,
-    set_id_name_map/1,
     get_id_name_map/0
 ]).
-
--define(ONLINE_MAP, online_map).
--define(NAME_ID_MAP, name_id_map).
--define(ID_NAME_MAP, id_name_map).
-
 
 load_all_role_cache() ->
     db_mnesia:load_all_data(?DB_ROLE_CACHE).
 
-
-insert_online_role(Id) ->
-    OnlineMap = get_online_map(),
-    set_online_map(maps:put(Id, 1, OnlineMap)).
-
-remove_online_role(Id) ->
-    OnlineMap = get_online_map(),
-    set_online_map(maps:remove(Id, OnlineMap)).
-
 get_online_map() ->
-    case erlang:get(?ONLINE_MAP) of
-        undefined -> #{};
-        OnlineMap -> OnlineMap
-    end.
+    RoleCaches = db_mnesia:get_all_data(?DB_ROLE_CACHE),
+    lists:foldl(
+        fun(#db_role_cache{role_id = RoleId, is_online = IsOnLine}, Acc) ->
+            case IsOnLine of
+                ?ONLINE -> maps:put(RoleId, 1, Acc);
+                _ -> Acc
+            end
+        end, #{}, RoleCaches).
 
-set_online_map(OnlineMap) ->
-    erlang:put(?ONLINE_MAP, OnlineMap).
+get_offline_map() ->
+    RoleCaches = db_mnesia:get_all_data(?DB_ROLE_CACHE),
+    lists:foldl(
+        fun(#db_role_cache{role_id = RoleId, is_online = IsOnLine, offline_tick = OffLineTick}, Acc) ->
+            case IsOnLine of
+                ?OFFLINE -> maps:put(RoleId, OffLineTick, Acc);
+                _ -> Acc
+            end
+        end, #{}, RoleCaches).
+
+get_name_id_map() ->
+    RoleCaches = db_mnesia:get_all_data(?DB_ROLE_CACHE),
+    lists:foldl(
+        fun(#db_role_cache{role_id = RoleId, name = Name}, Acc) ->
+            maps:put(Name, RoleId, Acc)
+        end, #{}, RoleCaches).
+
+get_id_name_map() ->
+    RoleCaches = db_mnesia:get_all_data(?DB_ROLE_CACHE),
+    lists:foldl(
+        fun(#db_role_cache{role_id = RoleId, name = Name}, Acc) ->
+            maps:put(RoleId, Name, Acc)
+        end, #{}, RoleCaches).
 
 get_role_cache(Id) ->
     db_mnesia:get_data(?DB_ROLE_CACHE, Id).
 
 set_role_cache(RoleCache) ->
-    db_mnesia:set_data(RoleCache),
-    #role_cache{id = Id, name = Name} = RoleCache,
-    update_id_name_map(Id, Name).
-
-
-update_id_name_map(Id, Name) ->
-    NameIdMap = get_name_id_map(),
-    IdNameMap = get_id_name_map(),
-    OldName = maps:get(Id, IdNameMap, ""),
-    NewNameIdMap0 = maps:remove(OldName, NameIdMap),
-    NewNameIdMap = maps:put(Name, Id, NewNameIdMap0),
-    NewIdNameMap = maps:put(Id, Name, IdNameMap),
-    set_name_id_map(NewNameIdMap),
-    set_id_name_map(NewIdNameMap).
-
-set_name_id_map(NameMap) ->
-    erlang:put(?NAME_ID_MAP, NameMap).
-
-get_name_id_map() ->
-    case erlang:get(?NAME_ID_MAP) of
-        undefined -> #{};
-        NameMap -> NameMap
-    end.
-
-set_id_name_map(NameMap) ->
-    erlang:put(?ID_NAME_MAP, NameMap).
-
-get_id_name_map() ->
-    case erlang:get(?ID_NAME_MAP) of
-        undefined -> #{};
-        NameMap -> NameMap
-    end.
+    db_mnesia:set_data(?DB_ROLE_CACHE, RoleCache#db_role_cache.role_id, RoleCache).

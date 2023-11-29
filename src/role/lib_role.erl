@@ -13,22 +13,22 @@
     friend/1
 ]).
 
-change_role_name(Id, Name) ->
-    Role = get_role(Id),
-    NewRole = Role#role{name = Name},
+change_role_name(RoleId, Name) ->
+    Role = get_role(RoleId),
+    NewRole = Role#db_role{name = Name},
     set_role(NewRole),
-    lib_role_listen:listen_change_name(Id).
+    lib_role_listen:listen_change_name(RoleId).
 
 
-friend(Id) ->
-    Friend = db_mnesia:get_data(?DB_ROLE_FRIEND, Id),
-    Value = #friend{key = -1, value = "wsc" ++ lib_types:to_list(-1), other = ["---asdsadasasd"]},
-    NewFriend = Friend#role_friend{friend_list = lists:keystore(-1, #friend.key, Friend#role_friend.friend_list, Value)},
-    db_mnesia:set_data(NewFriend).
+friend(RoleId) ->
+    Friend = db_mnesia:get_data(?DB_ROLE_FRIEND, RoleId),
+    Value = #r_friend{role_id = -1, role_name = "wsc" ++ lib_types:to_list(-1), other = ["---asdsadasasd"]},
+    NewFriend = Friend#db_role_friend{friend_list = lists:keystore(-1, #r_friend.role_id, Friend#db_role_friend.friend_list, Value)},
+    db_mnesia:set_data(?DB_ROLE_FRIEND, RoleId, NewFriend).
 
 
-get_role(Id) ->
-    db_mnesia:get_data(?DB_ROLE, Id).
+get_role(RoleId) ->
+    db_mnesia:get_data(?DB_ROLE, RoleId).
 
 set_role(Role) ->
-    db_mnesia:set_data(Role).
+    db_mnesia:set_data(?DB_ROLE, Role#db_role.role_id, Role).

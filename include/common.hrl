@@ -12,22 +12,6 @@
 -ifndef('common_HRL').
 -define('common_HRL', true).
 
--include("db_table.hrl").
-
--define(INT, int).
--define(FLOAT, float).
--define(STRING, string).
--define(LIST, list).
-
--define(TAB_TYPE_ROLE, "role").     %% role process table
--define(TAB_TYPE_SYS, "sys").       %% sys process table
-
--define(SAVE_MAP, save_map).
--define(SAVE_TIMEOUT, 5 * 60 * 1000).
-
--record(table, {name, key, type, def, fields = []}).
--record(field, {name, type, sub_type, value}).
-
 -define(DEBUG(Format), mod_log:debug_msg(?MODULE, ?LINE, Format, [])).
 -define(DEBUG(Format, Args), mod_log:debug_msg(?MODULE, ?LINE, Format, Args)).
 

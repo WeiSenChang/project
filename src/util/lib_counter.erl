@@ -36,8 +36,12 @@ get_counter_id(Key) ->
         fun lib_counter:sync_get_id/1, [Key]).
 
 sync_get_id(Key) ->
-    Uid = db_mnesia:get_data(?DB_UID, Key),
-    NewId = Uid#uid.id + 1,
-    NewUid = Uid#uid{id = NewId},
-    db_mnesia:set_data(NewUid),
+    Uid =
+        case db_mnesia:get_data(?DB_UID, Key) of
+            #db_uid{} = Uid0 -> Uid0;
+            _ -> #db_uid{key = Key}
+        end,
+    NewId = Uid#db_uid.id + 1,
+    NewUid = Uid#db_uid{id = NewId},
+    db_mnesia:set_data(?DB_UID, Key, NewUid),
     NewId.

@@ -10,6 +10,7 @@
 -module(make_table).
 -author("weisenchang").
 
+-include("./include/common.hrl").
 -include("./include/game_table.hrl").
 
 -define(MOD, "db_table").
@@ -39,77 +40,11 @@ gen_erl_header() ->
     role_tables/0,
     sys_tables/0,
     get_table/1,
-    record_to_map/1,
-    map_to_record/2,
+    field_map_to_record/2,
+    get_fields/1,
     get_field_map/1,
-    set_map_value/2,
-    get_map_value/2,
-    set_field_value/2,
     get_field_value/2
 ]).
-
-record_to_map(Record)->
-	Fields = get_fields(Record),
-	fields_to_map(Fields).
-fields_to_map(Fields) ->
-    fields_to_map(#{}, Fields).
-fields_to_map(Map, []) ->
-    Map;
-fields_to_map(Map, [Field|T]) ->
-    NewMap = set_map_value(Field, Map),
-    fields_to_map(NewMap, T).
-set_map_value(Field, Map) ->
-    #field{name = Name, type = Type, sub_type = SubType, value = Value} = Field,
-    set_map_value(Type, SubType, Name, Value, Map).
-set_map_value(?INT, _, Name, Value, Map) ->
-    maps:put(lib_types:to_binary(Name), lib_types:to_integer(Value), Map);
-set_map_value(?FLOAT, _, Name, Value, Map) ->
-    maps:put(lib_types:to_binary(Name), lib_types:to_float(Value), Map);
-set_map_value(?STRING, _, Name, Value, Map) ->
-    maps:put(lib_types:to_binary(Name), lib_types:to_binary(Value), Map);
-set_map_value(?LIST, SubType, Name, Value, Map) ->
-    case SubType of
-        ?INT -> maps:put(lib_types:to_binary(Name), Value, Map);
-        ?FLOAT -> maps:put(lib_types:to_binary(Name), Value, Map);
-        ?STRING -> maps:put(lib_types:to_binary(Name), [lib_types:to_binary(V) || V <- Value], Map);
-        _ -> maps:put(lib_types:to_binary(Name), [record_to_map(V) || V <- Value], Map)
-    end;
-set_map_value(_, _, Name, Value, Map) ->
-    maps:put(lib_types:to_binary(Name), record_to_map(Value), Map).
-
-map_to_record(Map, Name) ->
-	FieldMap = get_field_map(Name),
-	NewFieldMap = map_to_field_map(Map, FieldMap),
-	field_map_to_record(Name, NewFieldMap).
-map_to_field_map(Map, FieldMap) ->
-    maps:fold(
-        fun(Name, Field, Acc) ->
-            Value = get_map_value(Field, Map),
-            NewField = Field#field{value = Value},
-            maps:put(Name, NewField, Acc)
-        end, #{}, FieldMap).
-
-get_map_value(Field, Map) ->
-    #field{name = Name, type = Type, sub_type = SubType} = Field,
-    get_map_value(Type, SubType, Name, Map).
-get_map_value(?INT, _, Name, Map) ->
-    lib_types:to_integer(maps:get(lib_types:to_binary(Name), Map, 0));
-get_map_value(?FLOAT, _, Name, Map) ->
-    lib_types:to_float(maps:get(lib_types:to_binary(Name), Map, 0.0));
-get_map_value(?STRING, _, Name, Map) ->
-    lib_types:to_list(maps:get(lib_types:to_binary(Name), Map, \"\"));
-get_map_value(?LIST, SubType, Name, Map) ->
-    case SubType of
-        ?INT -> [lib_types:to_integer(V) || V <- lib_types:to_list(maps:get(lib_types:to_binary(Name), Map, []))];
-        ?FLOAT -> [lib_types:to_float(V) || V <- lib_types:to_list(maps:get(lib_types:to_binary(Name), Map, []))];
-        ?STRING -> [lib_types:to_list(V) || V <- lib_types:to_list(maps:get(lib_types:to_binary(Name), Map, []))];
-        _ -> [map_to_record(V, SubType) || V <- lib_types:to_list(maps:get(lib_types:to_binary(Name), Map, []))]
-    end;
-get_map_value(Type, _, Name, Map) ->
-    map_to_record(maps:get(lib_types:to_binary(Name), Map, #{}), Type).
-
-set_field_value(Field, Value) ->
-    Field#field{value = Value}.
 
 get_field_value(Key, FieldMap) ->
     #field{value = Value} = maps:get(Key, FieldMap),
@@ -234,7 +169,9 @@ gen_hrl_header() ->
     "%% -*- coding: utf-8 -*-
 %% 数据表定义, 自动创建
 -ifndef('" ++ ?MOD ++ "_HRL').
--define('" ++ ?MOD ++ "_HRL', true).\n\n".
+-define('" ++ ?MOD ++ "_HRL', true).\n\n
+-include(\"db.hrl\").\n\n\n".
+
 
 %%
 gen_hrl_body(_Name, [], Map) ->

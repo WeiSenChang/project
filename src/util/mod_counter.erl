@@ -42,7 +42,7 @@ start_link() ->
     {ok, State :: #mod_counter_state{}} | {ok, State :: #mod_counter_state{}, timeout() | hibernate} |
     {stop, Reason :: term()} | ignore).
 init([]) ->
-    [db_mnesia:set_data(Uid) || Uid <- lib_counter:load_all_uid()],
+    lib_counter:load_all_uid(),
     {ok, #mod_counter_state{}}.
 
 %% @private

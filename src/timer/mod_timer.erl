@@ -86,7 +86,7 @@ handle_cast(_Request, State = #mod_timer_state{}) ->
 handle_info(min, State = #mod_timer_state{}) ->
     Secs = lib_timer:next_min_time(),
     NewRef = erlang:send_after(Secs * 1000, self(), min),
-    ?INFO("next min: ~w s", [Secs]),
+    ?INFO("next min ~w s", [Secs]),
     lists:foreach(fun(Mod) -> Mod:min() end, ?MIN_NTF_MODS),
     {noreply, State#mod_timer_state{min_ref = NewRef}};
 handle_info(hour, State = #mod_timer_state{}) ->

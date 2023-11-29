@@ -50,6 +50,7 @@ role_gm("create", Num, _, _Par3, _Par4) ->
         end,
     lists:foreach(Fun, lists:seq(1, Num)),
     EndTick = lib_timer:unix_time(),
+    ok,
     ?DEBUG("create role end, use time ~w s", [EndTick - StarTick]);
 role_gm("change_name", _Par1, _Par2, _Par3, _Par4) ->
     StarTick = lib_timer:unix_time(),

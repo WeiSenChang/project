@@ -32,6 +32,7 @@
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2, terminate/2, code_change/3]).
 
 -define(CALL_BACK_MOD, callback_mod).
+-define(SAVE_SEC, 5 * 60).
 
 %%%===================================================================
 %%% API
@@ -49,7 +50,7 @@ init([Mod, Args]) ->
     try
         put_callback_mod(Mod),
         erlang:process_flag(trap_exit, true),
-        erlang:send_after(?SAVE_TIMEOUT, self(), save_data),
+        erlang:send_after(?SAVE_SEC * 1000, self(), save_data),
         Mod:init(Args)
     catch
         _:Reason ->
@@ -160,7 +161,7 @@ do_info(stop, State) ->
 
 %% 处理保存进程数据的消息save
 do_info(save_data, State) ->
-    erlang:send_after(?SAVE_TIMEOUT, self(), save_data),
+    erlang:send_after(?SAVE_SEC * 1000, self(), save_data),
     db_mnesia:save_data(),
     {noreply, State};
 

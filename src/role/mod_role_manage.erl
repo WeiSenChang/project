@@ -38,6 +38,7 @@ get_pid() ->
 stop() ->
     mod_server:sync_stop(get_pid()).
 
+
 %%%===================================================================
 %%% gen_server callbacks
 %%%===================================================================
@@ -48,7 +49,7 @@ stop() ->
     {ok, State :: #mod_role_manage_state{}} | {ok, State :: #mod_role_manage_state{}, timeout() | hibernate} |
     {stop, Reason :: term()} | ignore).
 init([]) ->
-    [lib_role_manage:set_role_cache(RoleCache) || RoleCache <- lib_role_manage:load_all_role_cache()],
+    lib_role_manage:load_all_role_cache(),
     {ok, #mod_role_manage_state{}}.
 
 %% @private
