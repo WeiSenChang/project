@@ -27,7 +27,7 @@ tables() ->
 
 %% db table
 table("db_role") ->
-    #table{name = "db_role", key = "role_id", def = "DB_ROLE", type = ?TAB_TYPE_ROLE, fields = [
+    #table{name = "db_role", key = "role_id", def = "DB_ROLE", type = ?TAB_TYPE_ROLE, save_secs = ?SAVE_SECS, fields = [
         #field{name = "role_id", type = ?INT},
         #field{name = "name", type = ?STRING},
         #field{name = "level", type = ?INT},
@@ -44,7 +44,7 @@ table("db_role_friend") ->
         #field{name = "black_list", type = ?LIST, sub_type = ?INT}
     ]};
 table("db_role_cache") ->
-    #table{name = "db_role_cache", key = "role_id", def = "DB_ROLE_CACHE", type = ?TAB_TYPE_SYS, fields = [
+    #table{name = "db_role_cache", key = "role_id", def = "DB_ROLE_CACHE", type = ?TAB_TYPE_SYS, save_secs = ?SAVE_SECS, load_num = ?LOAD_NUM, fields = [
         #field{name = "role_id", type = ?INT},
         #field{name = "name", type = ?STRING},
         #field{name = "level", type = ?INT},
@@ -53,8 +53,8 @@ table("db_role_cache") ->
         #field{name = "offline_tick", type = ?INT}
     ]};
 table("db_uid") ->
-    #table{name = "db_uid", key = "key", def = "DB_UID", type = ?TAB_TYPE_SYS, fields = [
-        #field{name = "key", type = ?STRING},
+    #table{name = "db_uid", key = "key", def = "DB_UID", type = ?TAB_TYPE_SYS, save_secs = 30, fields = [
+        #field{name = "key", type = ?INT},
         #field{name = "id", type = ?INT}
     ]};
 

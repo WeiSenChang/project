@@ -2,190 +2,99 @@
 %%% @author weisenchang
 %%% @copyright (C) 2023, <COMPANY>
 %%% @doc
-%%%
 %%% @end
-%%% Created : 29. 5月 2023 21:58
 %%%-------------------------------------------------------------------
 -module(mod_log).
--author("weisenchang").
 
 -behaviour(gen_server).
 
 -include("common.hrl").
 
 %% API
--export([start_link/0, info_msg/4, debug_msg/4, async_msg/2, get_pid/0, hour/0, async_hour/0]).
+-export([debug_msg/4, info_msg/4, waring_msg/4, async_msg/2]).
 
-%% gen_server callbacks
--export([init/1, handle_call/3, handle_cast/2, handle_info/2, terminate/2, code_change/3]).
+-export([start_link/0, get_pid/0, db_init/1]).
+-export([init/1, handle_call/3, handle_cast/2, handle_info/2, terminate/2,
+    code_change/3]).
 
 -define(SERVER, ?MODULE).
 
 -define(LOG_LEVEL_DEBUG, 0).
 -define(LOG_LEVEL_INFO, 1).
+-define(LOG_LEVEL_WARING, 2).
 
 -record(mod_log_state, {}).
 
 %%%===================================================================
-%%% API
+%%% Spawning and gen_server implementation
 %%%===================================================================
 
-%% @doc Spawns the server and registers the local name (unique)
--spec(start_link() ->
-    {ok, Pid :: pid()} | ignore | {error, Reason :: term()}).
 start_link() ->
     mod_server:start_link({local, ?SERVER}, ?MODULE, [], []).
 
 get_pid() ->
     erlang:whereis(?SERVER).
 
-%%%===================================================================
-%%% gen_server callbacks
-%%%===================================================================
-
-%% @private
-%% @doc Initializes the server
--spec(init(Args :: term()) ->
-    {ok, State :: #mod_log_state{}} | {ok, State :: #mod_log_state{}, timeout() | hibernate} |
-    {stop, Reason :: term()} | ignore).
 init([]) ->
-    move_old_log(),
-    case open_log() of
-        {ok, Fd} ->
-            set_log_fd(Fd);
-        _ ->
-            skip
-    end,
+    lib_server:set_server_state(?SERVER, ?SERVER_STARTING),
     {ok, #mod_log_state{}}.
 
-%% @private
-%% @doc Handling call messages
--spec(handle_call(Request :: term(), From :: {pid(), Tag :: term()},
-    State :: #mod_log_state{}) ->
-    {reply, Reply :: term(), NewState :: #mod_log_state{}} |
-    {reply, Reply :: term(), NewState :: #mod_log_state{}, timeout() | hibernate} |
-    {noreply, NewState :: #mod_log_state{}} |
-    {noreply, NewState :: #mod_log_state{}, timeout() | hibernate} |
-    {stop, Reason :: term(), Reply :: term(), NewState :: #mod_log_state{}} |
-    {stop, Reason :: term(), NewState :: #mod_log_state{}}).
+db_init(State) ->
+    lib_server:set_server_state(?SERVER, ?SERVER_STARTED),
+    {noreply, State}.
+
 handle_call(_Request, _From, State = #mod_log_state{}) ->
     {reply, ok, State}.
 
-%% @private
-%% @doc Handling cast messages
--spec(handle_cast(Request :: term(), State :: #mod_log_state{}) ->
-    {noreply, NewState :: #mod_log_state{}} |
-    {noreply, NewState :: #mod_log_state{}, timeout() | hibernate} |
-    {stop, Reason :: term(), NewState :: #mod_log_state{}}).
 handle_cast(_Request, State = #mod_log_state{}) ->
     {noreply, State}.
 
-%% @private
-%% @doc Handling all non call/cast messages
--spec(handle_info(Info :: timeout() | term(), State :: #mod_log_state{}) ->
-    {noreply, NewState :: #mod_log_state{}} |
-    {noreply, NewState :: #mod_log_state{}, timeout() | hibernate} |
-    {stop, Reason :: term(), NewState :: #mod_log_state{}}).
 handle_info(_Info, State = #mod_log_state{}) ->
     {noreply, State}.
 
-%% @private
-%% @doc This function is called by a gen_server when it is about to
-%% terminate. It should be the opposite of Module:init/1 and do any
-%% necessary cleaning up. When it returns, the gen_server terminates
-%% with Reason. The return value is ignored.
--spec(terminate(Reason :: (normal | shutdown | {shutdown, term()} | term()),
-    State :: #mod_log_state{}) -> term()).
 terminate(_Reason, _State = #mod_log_state{}) ->
     ok.
 
-%% @private
-%% @doc Convert process state when code is changed
--spec(code_change(OldVsn :: term() | {down, term()}, State :: #mod_log_state{},
-    Extra :: term()) ->
-    {ok, NewState :: #mod_log_state{}} | {error, Reason :: term()}).
 code_change(_OldVsn, State = #mod_log_state{}, _Extra) ->
-    mod_server:put_callback_mod(?MODULE),
     {ok, State}.
 
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
+
 debug_msg(Mod, Line, Format, Args) ->
-    Log = gen_log(Mod, Line, Format, Args, "DEBUG"),
-    mod_server:async_apply(mod_log:get_pid(), fun mod_log:async_msg/2, [Log, ?LOG_LEVEL_DEBUG]).
+    LogLevel = ?LOG_LEVEL_DEBUG,
+    msg(Mod, Line, Format, Args, LogLevel).
 
 info_msg(Mod, Line, Format, Args) ->
-    Log = gen_log(Mod, Line, Format, Args, "INFO"),
-    mod_server:async_apply(mod_log:get_pid(), fun mod_log:async_msg/2, [Log, ?LOG_LEVEL_INFO]).
+    LogLevel = ?LOG_LEVEL_INFO,
+    msg(Mod, Line, Format, Args, LogLevel).
 
-gen_log(Mod, Line, Format, Args, LogLevel) ->
-    NewFormat = "[~.2.0w:~.2.0w:~.2.0w][~w][~w:~w][" ++ LogLevel ++ "] " ++ Format ++ "~n",
-    {_Date, {H, M, S}} = lib_timer:to_local_time(lib_timer:unix_time()),
-    NewArgs = [H, M, S, self(), Mod, Line | Args],
-    io_lib:format(NewFormat, NewArgs).
+waring_msg(Mod, Line, Format, Args) ->
+    LogLevel = ?LOG_LEVEL_WARING,
+    msg(Mod, Line, Format, Args, LogLevel).
+
+
+msg(Mod, Line, Format, Args, LogLevel) ->
+    Log = gen_log(Mod, Line, Format, Args),
+    mod_server:async_apply(mod_log:get_pid(), fun mod_log:async_msg/2, [Log, LogLevel]).
 
 async_msg(Log, LogLevel) ->
-    try
-        io:format(Log),
-        ?JUDGE_RETURN(LogLevel > ?LOG_LEVEL_DEBUG, -1),
-        case get_log_fd() of
-            undefined ->
-                case open_log() of
-                    {ok, NewFd} ->
-                        set_log_fd(NewFd),
-                        io:format(NewFd, "~ts", [Log]);
-                    _ ->
-                        skip
-                end;
-            Fd ->
-                io:format(Fd, "~ts", [Log])
-        end
-    catch
-        _ -> skip
-    end.
-
-open_log() ->
-    File = lib_common:log_tab("log"),
-    Fn = "./log/" ++ File ++ ".log",
-    filelib:ensure_dir(Fn),
-    file:open(Fn, [append]).
-
-move_old_log() ->
-    case file:list_dir_all("./log/") of
-        {ok, NameList} ->
-            File = lib_common:log_tab("log"),
-            Dir = "./history_log/" ++ File ++ "/",
-            filelib:ensure_dir(Dir),
-            lists:foreach(
-                fun(Name) ->
-                    SourceName = "./log/" ++ Name,
-                    DestinationName = Dir ++ Name,
-                    file:copy(SourceName, DestinationName),
-                    file:delete(SourceName)
-                end, NameList);
-        _ -> skip
-    end.
-
-
-hour() ->
-    mod_server:async_apply(mod_log:get_pid(), fun mod_log:async_hour/0).
-async_hour() ->
-    case get_log_fd() of
-        undefined -> skip;
-        Fd ->
-            file:close(Fd),
-            file:sync(Fd)
-    end,
-    case open_log() of
-        {ok, NewFd} ->
-            set_log_fd(NewFd);
+    case LogLevel of
+        ?LOG_LEVEL_DEBUG ->
+            {{Y, Mon, D}, {H, Min, S}} = lib_timer:to_local_time(lib_timer:unix_time()),
+            MonStr = lib_timer:month_to_str(Mon),
+            HeadLog = io_lib:format("=DEBUG REPORT==== ~.2.0w-~ts-~.4.0w::~.2.0w:~.2.0w:~.2.0w ===~n", [D, MonStr, Y, H, Min, S]),
+            io:format(HeadLog ++ Log);
+        ?LOG_LEVEL_INFO ->
+            error_logger:info_msg(Log);
+        ?LOG_LEVEL_WARING ->
+            error_logger:warning_msg(Log);
         _ ->
-            skip
+            error_logger:format(Log, [])
     end.
 
-set_log_fd(Fd) ->
-    erlang:put(log_fd, Fd).
-
-get_log_fd() ->
-    erlang:get(log_fd).
+gen_log(Mod, Line, Format, Args) ->
+    NewFormat = "[Pid:~w][Mod:~w][Line:~w][Msg:\"" ++ Format ++ "\"]~n",
+    NewArgs = [self(), Mod, Line | Args],
+    io_lib:format(NewFormat, NewArgs).

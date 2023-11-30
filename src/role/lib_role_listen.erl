@@ -34,4 +34,4 @@ listen_change_name(RoleId) ->
 update_role_cache(RoleId) ->
     #db_role{name = Name, level = Level, career = Career, is_online = IsOnline, offline_tick = OffLineTick} = lib_role:get_role(RoleId),
     RoleCache = #db_role_cache{role_id = RoleId, name = Name, level = Level, career = Career, is_online = IsOnline, offline_tick = OffLineTick},
-    mod_server:async_apply(mod_role_manage:get_pid(), fun lib_role_manage:set_role_cache/1, [RoleCache]).
+    lib_role_manage:set_role_cache(RoleCache).

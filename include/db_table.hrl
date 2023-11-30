@@ -17,7 +17,7 @@
 
 
 -record(db_uid, {
-	key = "", 
+	key = 0, 
 	id = 0 
 }).
 

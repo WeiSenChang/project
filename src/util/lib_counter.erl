@@ -5,20 +5,14 @@
 -include("common.hrl").
 -include("db_table.hrl").
 
--define(COUNTER_ROLE_ID, "role_id").
--define(COUNTER_MAIL_ID, "mail_id").
+-define(COUNTER_ROLE_ID, 1).
+-define(COUNTER_MAIL_ID, 2).
 
 %% API
 -export([
-    load_all_uid/0,
     get_role_id/0,
     get_mail_id/0
 ]).
-
--export([sync_get_id/1]).
-
-load_all_uid() ->
-    db_mnesia:load_all_data(?DB_UID).
 
 %% 获取唯一id接口
 %%%%%%%%%%%
@@ -32,16 +26,12 @@ get_mail_id() ->
 %% 内部接口
 %%%%%%%%%%%%%%%%%%%%
 get_counter_id(Key) ->
-    mod_server:sync_apply(mod_counter:get_pid(),
-        fun lib_counter:sync_get_id/1, [Key]).
-
-sync_get_id(Key) ->
     Uid =
-        case db_mnesia:get_data(?DB_UID, Key) of
+        case db:get_cache(?DB_UID, Key) of
             #db_uid{} = Uid0 -> Uid0;
             _ -> #db_uid{key = Key}
         end,
     NewId = Uid#db_uid.id + 1,
     NewUid = Uid#db_uid{id = NewId},
-    db_mnesia:set_data(?DB_UID, Key, NewUid),
+    db:set_cache(?DB_UID, Key, NewUid),
     NewId.

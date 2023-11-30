@@ -30,7 +30,7 @@ to_integer(Value) when is_binary(Value) ->
 to_integer(Value) when is_list(Value) ->
     ?TRY_CATCH(list_to_integer(Value), ?TRY_CATCH(round(list_to_float(Value)), 0));
 to_integer(Value) when is_atom(Value) ->
-    BinValue = atom_to_binary(Value),
+    BinValue = m_atom_to_binary(Value),
     to_integer(BinValue);
 to_integer(Value) ->
     BinValue = term_to_binary(Value),
@@ -45,7 +45,7 @@ to_float(Value) when is_binary(Value) ->
 to_float(Value) when is_list(Value) ->
     ?TRY_CATCH(list_to_float(Value), ?TRY_CATCH(list_to_integer(Value) + 0.0, 0));
 to_float(Value) when is_atom(Value) ->
-    BinValue = atom_to_binary(Value),
+    BinValue = m_atom_to_binary(Value),
     to_float(BinValue);
 to_float(Value) ->
     BinValue = term_to_binary(Value),
@@ -67,15 +67,15 @@ to_list(Value) ->
 to_atom(Value) when is_atom(Value) ->
     Value;
 to_atom(Value) when is_binary(Value) ->
-    binary_to_atom(Value);
+    m_binary_to_atom(Value);
 to_atom(Value) when is_list(Value) ->
     list_to_atom(Value);
 to_atom(Value) when is_float(Value) ->
-    binary_to_atom(float_to_binary(Value));
+    m_binary_to_atom(float_to_binary(Value));
 to_atom(Value) when is_integer(Value) ->
-    binary_to_atom(integer_to_binary(Value));
+    m_binary_to_atom(integer_to_binary(Value));
 to_atom(Value) ->
-    binary_to_atom(term_to_binary(Value)).
+    m_binary_to_atom(term_to_binary(Value)).
 
 to_binary(Value) when is_binary(Value) ->
     Value;
@@ -86,6 +86,12 @@ to_binary(Value) when is_float(Value) ->
 to_binary(Value) when is_integer(Value) ->
     integer_to_binary(Value);
 to_binary(Value) when is_atom(Value) ->
-    atom_to_binary(Value);
+    m_atom_to_binary(Value);
 to_binary(Value) ->
     term_to_binary(Value).
+
+m_atom_to_binary(Value) ->
+    erlang:atom_to_binary(Value, utf8).
+
+m_binary_to_atom(Value) ->
+    erlang:binary_to_atom(Value, utf8).

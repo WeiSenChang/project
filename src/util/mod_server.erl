@@ -32,7 +32,6 @@
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2, terminate/2, code_change/3]).
 
 -define(CALL_BACK_MOD, callback_mod).
--define(SAVE_SEC, 5 * 60).
 
 %%%===================================================================
 %%% API
@@ -49,8 +48,7 @@ start_link(ProcessName, Mod, Args, Options) ->
 init([Mod, Args]) ->
     try
         put_callback_mod(Mod),
-        erlang:process_flag(trap_exit, true),
-        erlang:send_after(?SAVE_SEC * 1000, self(), save_data),
+        cast(self(), db_init),
         Mod:init(Args)
     catch
         _:Reason ->
@@ -65,7 +63,7 @@ handle_call(Request, From, State) ->
         do_call(Request, From, State)
     catch
         _:_Reason ->
-            ?INFO("~w", [_Reason]),
+            ?WARING("~w", [_Reason]),
             {reply, ok, State}
     end.
 
@@ -76,7 +74,7 @@ handle_cast(Request, State) ->
         do_cast(Request, State)
     catch
         _:_Reason ->
-            ?INFO("~w, ~w", [get_callback_mod(), _Reason]),
+            ?WARING("~w, ~w", [get_callback_mod(), _Reason]),
             {noreply, State}
     end.
 
@@ -87,7 +85,7 @@ handle_info(Info, State) ->
         do_info(Info, State)
     catch
         _:_Reason ->
-            ?INFO("~w", [_Reason]),
+            ?WARING("~w", [_Reason]),
             {noreply, State}
     end.
 
@@ -99,11 +97,10 @@ handle_info(Info, State) ->
 terminate(Reason, State) ->
     Mod = get_callback_mod(),
     try
-        db_mnesia:save_data(),
         Mod:terminate(Reason, State)
     catch
         _:_StopReason ->
-            ?INFO("~w", [_StopReason]),
+            ?WARING("~w", [_StopReason]),
             skip
     end,
     {stop, Reason, State}.
@@ -151,6 +148,10 @@ do_cast(stop, State) ->
 do_cast({stop, Reason}, State) ->
     {stop, Reason, State};
 
+do_cast(db_init, State) ->
+    Mod = get_callback_mod(),
+    Mod:db_init(State);
+
 do_cast(Request, State) ->
     Mod = get_callback_mod(),
     Mod:handle_cast(Request, State).
@@ -159,19 +160,13 @@ do_cast(Request, State) ->
 do_info(stop, State) ->
     {stop, normal, State};
 
-%% 处理保存进程数据的消息save
-do_info(save_data, State) ->
-    erlang:send_after(?SAVE_SEC * 1000, self(), save_data),
-    db_mnesia:save_data(),
-    {noreply, State};
-
 do_info(Info, State) ->
     Mod = get_callback_mod(),
     Mod:handle_info(Info, State).
 
 %% 同步发送消息
 call(Pid, Request) ->
-   gen_server:call(Pid, Request).
+    gen_server:call(Pid, Request).
 
 sync_apply(Pid, Fun) ->
     call(Pid, {sync_apply, Fun}).

@@ -13,7 +13,7 @@
 -behaviour(gen_server).
 
 %% API
--export([start_link/0, get_pid/0, stop/0]).
+-export([start_link/0, get_pid/0, stop/0, db_init/1]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2, terminate/2,
@@ -43,7 +43,12 @@ start_link() ->
     {ok, State :: #mod_friend_state{}} | {ok, State :: #mod_friend_state{}, timeout() | hibernate} |
     {stop, Reason :: term()} | ignore).
 init([]) ->
+    lib_server:set_server_state(?SERVER, ?SERVER_STARTING),
     {ok, #mod_friend_state{}}.
+
+db_init(State = #mod_friend_state{}) ->
+    lib_server:set_server_state(?SERVER, ?SERVER_STARTED),
+    {noreply, State}.
 
 %% @private
 %% @doc Handling call messages

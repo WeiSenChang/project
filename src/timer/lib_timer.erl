@@ -21,12 +21,14 @@
     next_hour_time/0,
     next_zero_time/0,
     next_zero_tick/0,
-    curr_zero_tick/0
+    curr_zero_tick/0,
+
+    month_to_str/1
 ]).
 
 unix_time() ->
     {M, S, _} = erlang:timestamp(),
-    M * 1000000 + S + ?TRY_CATCH(mod_timer:pass_secs(), 0).
+    M * 1000000 + S + ?TRY_CATCH(mod_timer:get_secs(), 0).
 
 to_unix_time(Date) ->
     calendar:datetime_to_gregorian_seconds(Date) - calendar:datetime_to_gregorian_seconds(start_date_time()).
@@ -67,6 +69,31 @@ next_zero_tick() ->
 
 curr_zero_tick() ->
     next_zero_tick() - day_second().
+
+month_to_str(1) ->
+    "Jan";
+month_to_str(2) ->
+    "Feb";
+month_to_str(3) ->
+    "Mar";
+month_to_str(4) ->
+    "Apr";
+month_to_str(5) ->
+    "May";
+month_to_str(6) ->
+    "Jun";
+month_to_str(7) ->
+    "Jul";
+month_to_str(8) ->
+    "Aug";
+month_to_str(9) ->
+    "Sept";
+month_to_str(10) ->
+    "Oct";
+month_to_str(11) ->
+    "Nov";
+month_to_str(12) ->
+    "Dec".
 
 %% 内部接口
 %%%%%%%%

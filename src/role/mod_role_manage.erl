@@ -15,7 +15,7 @@
 -include("db_table.hrl").
 
 %% API
--export([start_link/0, get_pid/0, stop/0]).
+-export([start_link/0, get_pid/0, stop/0, db_init/1]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2, terminate/2, code_change/3]).
@@ -49,8 +49,13 @@ stop() ->
     {ok, State :: #mod_role_manage_state{}} | {ok, State :: #mod_role_manage_state{}, timeout() | hibernate} |
     {stop, Reason :: term()} | ignore).
 init([]) ->
-    lib_role_manage:load_all_role_cache(),
+    lib_server:set_server_state(?MODULE, ?SERVER_STARTING),
     {ok, #mod_role_manage_state{}}.
+
+db_init(State = #mod_role_manage_state{}) ->
+    db:load_cache(?DB_ROLE_CACHE),
+    lib_server:set_server_state(?MODULE, ?SERVER_STARTED),
+    {noreply, State}.
 
 %% @private
 %% @doc Handling call messages

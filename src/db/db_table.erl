@@ -26,22 +26,20 @@ sys_tables() ->
 	[db_role_cache, db_uid].
 
 get_table('db_uid') ->
-	#table{key = 'key'};
+	#table{key = 'key', save_secs = 30, load_num = 0};
 get_table('db_role_cache') ->
-	#table{key = 'role_id'};
+	#table{key = 'role_id', save_secs = 300, load_num = 1000};
 get_table('db_role_friend') ->
-	#table{key = 'role_id'};
-get_table('r_friend') ->
-	#table{key = 'undefined'};
+	#table{key = 'role_id', save_secs = 0, load_num = 0};
 get_table('db_role') ->
-	#table{key = 'role_id'};
+	#table{key = 'role_id', save_secs = 300, load_num = 0};
 get_table(_)->
 	#table{}.
 
 get_fields(Record) when is_record(Record, 'db_uid') ->
 	#'db_uid'{'key' = F1, 'id' = F2} = Record,
 	[
-		#field{name = 'key', type = 'string', sub_type = 'undefined', value = F1},
+		#field{name = 'key', type = 'int', sub_type = 'undefined', value = F1},
 		#field{name = 'id', type = 'int', sub_type = 'undefined', value = F2}
 	];
 get_fields(Record) when is_record(Record, 'db_role_cache') ->
@@ -85,7 +83,7 @@ get_fields(_) ->
 
 get_field_map('db_uid') ->
 	#{
-		'key' => #field{name = 'key', type = 'string', sub_type = 'undefined'},
+		'key' => #field{name = 'key', type = 'int', sub_type = 'undefined'},
 		'id' => #field{name = 'id', type = 'int', sub_type = 'undefined'}
 	};
 get_field_map('db_role_cache') ->

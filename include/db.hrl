@@ -20,11 +20,16 @@
 -define(TAB_TYPE_ROLE, "role").     %% role process table
 -define(TAB_TYPE_SYS, "sys").       %% sys process table
 
--define(SAVE_MAP, save_map).
+-define(SAVE_SECS, 300).
+-define(LOAD_NUM, 1000).
 
--define(ETS(Tab), lib_types:to_atom(lib_types:to_list(Tab) ++ "_ets")).
+-define(CACHE(Tab), lib_types:to_atom(lib_types:to_list(Tab) ++ "_cache")).
+-define(CACHE_STATE(Tab), lib_types:to_atom(lib_types:to_list(Tab) ++ "_cache_state")).
 
--record(table, {name, key, type, def, fields = []}).
+-define(CACHE_STATE_SAVE, 1).
+-define(CACHE_STATE_NO_SAVE, 0).
+
+-record(table, {name, key, type, save_secs = 0, def, load_num = 0, fields = []}).
 -record(field, {name, type, sub_type, value}).
 
 -endif.

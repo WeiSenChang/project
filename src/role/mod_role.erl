@@ -14,13 +14,13 @@
 -include("common.hrl").
 
 %% API
--export([get_process_name/1, start_link/1, get_pid/1, stop/1, logout/1]).
+-export([get_process_name/1, start_link/1, get_pid/1, stop/1, logout/1, db_init/1]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2, terminate/2,
     code_change/3]).
 
--record(mod_role_state, {}).
+-record(mod_role_state, {role_id}).
 
 %%%===================================================================
 %%% API
@@ -41,8 +41,8 @@ get_process_name(Id) ->
     ProcessName = lib_types:to_list(?MODULE) ++ "_" ++ lib_types:to_list(Id),
     lib_types:to_atom(ProcessName).
 
-stop(Id) ->
-    mod_server:sync_stop(get_pid(Id)).
+stop(RoleId) ->
+    mod_server:sync_stop(get_pid(RoleId)).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -53,10 +53,13 @@ stop(Id) ->
 -spec(init(Args :: term()) ->
     {ok, State :: #mod_role_state{}} | {ok, State :: #mod_role_state{}, timeout() | hibernate} |
     {stop, Reason :: term()} | ignore).
-init([Id]) ->
-    load_role_data(Id),
-    lib_role_listen:listen_role_login(Id),
-    {ok, #mod_role_state{}}.
+init([RoleId]) ->
+    {ok, #mod_role_state{role_id = RoleId}}.
+
+db_init(State = #mod_role_state{role_id = RoleId}) ->
+    load_role_cache(RoleId),
+    lib_role_listen:listen_role_login(RoleId),
+    {noreply, State}.
 
 %% @private
 %% @doc Handling call messages
@@ -111,8 +114,8 @@ code_change(_OldVsn, State = #mod_role_state{}, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
-load_role_data(Id) ->
-    lists:foreach(fun(Tab) -> db_mnesia:load_data(Tab, Id) end, db_table:role_tables()).
+load_role_cache(RoleId) ->
+    lists:foreach(fun(Tab) -> db:load_cache(Tab, RoleId) end, db_table:role_tables()).
 
-logout(Id) ->
-    lib_role_listen:listen_role_logout(Id).
+logout(RoleId) ->
+    lib_role_listen:listen_role_logout(RoleId).
