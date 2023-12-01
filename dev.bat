@@ -1,7 +1,7 @@
 @echo off
 
-set cookie=weisenchang
-set node=weisenchang@192.168.0.199
+set cookie=wsc
+set node=wsc@192.168.20.92
 
 goto wait_input
 

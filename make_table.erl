@@ -14,8 +14,10 @@
 -include("./include/game_table.hrl").
 
 -define(MOD, "db_table").
--define(ERL_DIR, "./src/db/").
+-define(ERL_DIR, "./src/data/").
 -define(HRL_DIR, "./include/").
+
+-record(str, {v1 = "", v2 = "", v3 = "", v4 = "", v5 = "", v6 = "", v7 = ""}).
 
 main(_) ->
     create_hrl(),
@@ -23,120 +25,148 @@ main(_) ->
     ok.
 
 create_erl() ->
-    Header = gen_erl_header(),
-    Body = gen_erl_body(),
-    file:write_file(?ERL_DIR ++ ?MOD ++ ".erl", unicode:characters_to_binary(Header ++ Body, utf8)),
+    Str = gen_erl_header() ++ gen_erl_body() ++ gen_erl_tail(),
+    file:write_file(?ERL_DIR ++ ?MOD ++ ".erl", unicode:characters_to_binary(Str, utf8)),
     ok.
 
 gen_erl_header() ->
     "%% -*- coding: utf-8 -*-
 %% 数据表定义, 自动创建
--module(" ++ ?MOD ++ ").
-
+-module(" ++ ?MOD ++ ").\r\n
 -include(\"common.hrl\").
--include(\"" ++ ?MOD ++ ".hrl\").
-
+-include(\"" ++ ?MOD ++ ".hrl\").\r\n
 -export([
-    role_tables/0,
-    sys_tables/0,
+    role_tabs/0,
+    sys_tabs/0,
     get_table/1,
     field_map_to_record/2,
     get_fields/1,
-    get_field_map/1,
-    get_field_value/2
-]).
-
-get_field_value(Key, FieldMap) ->
-    #field{value = Value} = maps:get(Key, FieldMap),
-    Value.\n\n".
-
+    get_field_map/1
+]).\r\n\r\n".
 
 gen_erl_body() ->
-    {_, Str1, Str2, Str3, Str4, RoleTabs, SysTabs} = lists:foldr(
-        fun(Name, {Acc0, Acc1, Acc2, Acc3, Acc4, Acc5, Acc6}) ->
-            #table{key = Key, type = Type, fields = Fields,
-                save_secs = Secs, load_num = LoadNum} = table(Name),
-            {NewAcc5, NewAcc6} = gen_tabs_str(Type, Name, Acc5, Acc6),
-            KeyStr = ?TRY_CATCH(atom_to_list(Key), Key),
-            SecsStr = integer_to_list(Secs),
-            LoadNumStr = integer_to_list(LoadNum),
-            TabStr = "get_table('" ++ Name ++ "') ->\n\t#table{key = '" ++ KeyStr ++
-                "', save_secs = " ++ SecsStr ++ ", load_num = " ++ LoadNumStr ++ "};\n",
-            {AddAcc2, AddAcc3, AddAcc4, NewAcc0} = gen_fields_erl(Fields, Name, Acc0),
-            {NewAcc0, Acc1 ++ TabStr, Acc2 ++ AddAcc2, Acc3 ++ AddAcc3, Acc4 ++ AddAcc4, NewAcc5, NewAcc6}
-        end, {#{}, "", "", "", "", [], []}, tables()),
-    NewStr1 = Str1 ++ "get_table(_)->\n\t#table{}.\n\n",
-    NewStr2 = Str2 ++ "get_fields(_) ->\n\t[].\n\n",
-    NewStr3 = Str3 ++ "get_field_map(_) ->\n\t#{}.\n\n",
-    NewStr4 = Str4 ++ "field_map_to_record(_, _FieldMap) ->\n\tundefined.\n\n",
-    RoleTabStr = gen_tabs_str(RoleTabs),
-    SysTabStr = gen_tabs_str(SysTabs),
-    NewStr5 = "role_tables() ->\n\t[" ++ RoleTabStr ++ "].\n\n",
-    NewStr6 = "sys_tables() ->\n\t[" ++ SysTabStr ++ "].\n\n",
-    NewStr5 ++ NewStr6 ++ NewStr1 ++ NewStr2 ++ NewStr3 ++ NewStr4.
+    {RoleTabs, SysTabs} = split_tabs(),
+    Tabs = RoleTabs ++ SysTabs,
+    Str = gen_erl_body(#str{}, #{}, Tabs),
+    Str0 = gen_tabs_str(RoleTabs, "role"),
+    Str1 = gen_tabs_str(SysTabs, "sys"),
+    Str2 = Str#str.v1 ++ "get_table(_)->\r\n\t#table{}.\r\n\r\n",
+    Str3 = Str#str.v2 ++ Str#str.v3 ++ "get_fields(_) ->\r\n\t[].\r\n\r\n",
+    Str4 = Str#str.v4 ++ Str#str.v5 ++ "get_field_map(_) ->\r\n\t#{}.\r\n\r\n",
+    Str5 = Str#str.v6 ++ Str#str.v7 ++ "field_map_to_record(_, _FieldMap) ->\r\n\tundefined.\r\n\r\n",
+    Str0 ++ Str1 ++ Str2 ++ Str3 ++ Str4 ++ Str5.
 
-gen_tabs_str(Tabs) ->
-    Len = length(Tabs),
-    {TabsStr, _} = lists:foldl(
-        fun(TabName, {Acc0, Acc1}) ->
-            Str = if Acc1 >= Len -> ""; true -> ", " end,
-            {Acc0 ++ TabName ++ Str, Acc1 + 1}
-        end, {"", 1}, Tabs),
-    TabsStr.
-gen_tabs_str(?TAB_TYPE_ROLE, TabName, Acc5, Acc6) ->
-    {[TabName|Acc5], Acc6};
-gen_tabs_str(?TAB_TYPE_SYS, TabName, Acc5, Acc6) ->
-    {Acc5, [TabName|Acc6]};
-gen_tabs_str(_, _, Acc5, Acc6) ->
-    {Acc5, Acc6}.
+gen_erl_body(Str, _, []) ->
+    Str;
+gen_erl_body(Str, RecordMap, [Tab | Tail]) ->
+    #table{key = Key, secs = Secs, fields = Fields} = table(Tab),
+    SecsStr = erlang:integer_to_list(Secs),
+    V1 = "get_table(" ++ Tab ++ ") ->
+    #table{key = " ++ Key ++ ", secs = " ++ SecsStr ++ "};\r\n",
+    {NewRecordMap, AddStr} = gen_fields_erl(Tab, RecordMap, #str{v1 = V1}, Fields),
+    NewStr = add_str(Str, AddStr),
+    gen_erl_body(NewStr, NewRecordMap, Tail).
 
-gen_fields_erl([], _Name, Map) ->
-    {"", "", "", Map};
-gen_fields_erl(Fields, Name, Map) ->
-    Str1 = "get_fields(Record) when is_record(Record, '" ++ Name ++ "') ->\n",
-    Str2 = "\t#'" ++ Name ++ "'{",
-    Str3 = "\t[\n",
-    Str4 = "get_field_map('" ++ Name ++ "') ->\n\t#{\n",
-    Str5 = "field_map_to_record('" ++ Name ++ "', FieldMap) ->\n\t#'" ++ Name ++ "'{\n",
-    {AddMap, NewStr2, NewStr3, NewStr4, NewStr5} = gen_fields_erl(#{}, Str2, Str3, Str4, Str5, 1, length(Fields), Fields),
-    Str = Str1 ++ NewStr2 ++ NewStr3,
-    {AddStr, AddStr4, AddStr5, NewMap} = maps:fold(
-        fun(AddName, _, {AccAddStr, AccStr4, AccStr5, AccMap}) ->
-            case maps:is_key(AddName, AccMap) of
-                false ->
-                    NewAccMap0 = maps:put(AddName, 1, AccMap),
-                    #table{fields = AddFields} = table(AddName),
-                    {AddAccAddStr, AddAccStr4, AddAccStr5, NewAccMap1} = gen_fields_erl(AddFields, AddName, NewAccMap0),
-                    {AccAddStr ++ AddAccAddStr, AccStr4 ++ AddAccStr4, AccStr5 ++ AddAccStr5, NewAccMap1};
-                _ ->
-                    {AccAddStr, AccStr4, AccStr5, AccMap}
-            end
-        end, {"", "", "", Map}, AddMap),
-    {Str ++ AddStr, NewStr4 ++ AddStr4, NewStr5 ++ AddStr5, NewMap}.
 
-gen_fields_erl(AddMap, Str1, Str2, Str3, Str4, _, _, []) ->
-    {AddMap, Str1, Str2, Str3, Str4};
-gen_fields_erl(AddMap, Str1, Str2, Str3, Str4, Index, Len, [Field|T]) ->
-    {NewAddMap, AddStr1, AddStr2, AddStr3, AddStr4} = gen_field_erl(Field, Index, Len, AddMap),
-    gen_fields_erl(NewAddMap, Str1 ++ AddStr1, Str2 ++ AddStr2, Str3 ++ AddStr3, Str4 ++ AddStr4, Index + 1, Len, T).
+gen_erl_tail() ->
+    "get_field_value(Key, FieldMap) ->
+    #field{value = Value} = maps:get(Key, FieldMap),
+    Value.\r\n".
 
-gen_field_erl(Field, Index, Len, Map) ->
+split_tabs() ->
+    split_tabs([], [], tables()).
+split_tabs(RoleTabs, SysTabs, []) ->
+    {lists:reverse(RoleTabs), lists:reverse(SysTabs)};
+split_tabs(RoleTabs, SysTabs, [Tab | Tail]) ->
+    case table(Tab) of
+        #table{type = ?TAB_TYPE_ROLE} ->
+            split_tabs([Tab | RoleTabs], SysTabs, Tail);
+        #table{type = ?TAB_TYPE_SYS} ->
+            split_tabs(RoleTabs, [Tab | SysTabs], Tail);
+        _ ->
+            split_tabs(RoleTabs, SysTabs, Tail)
+    end.
+
+gen_tabs_str(Tabs, Type) ->
+    Body = gen_tabs_str("", 1, length(Tabs), Tabs),
+    Type ++ "_tabs() ->\r\n\t[" ++ Body ++ "].\r\n\r\n".
+gen_tabs_str(Body, _Count, _Len, []) ->
+    Body;
+gen_tabs_str(Body, Count, Len, [Tab | Tail]) ->
+    case Count >= Len of
+        true ->
+            gen_tabs_str(Body ++ Tab, Count + 1, Len, Tail);
+        false ->
+            gen_tabs_str(Body ++ Tab ++ ", ", Count + 1, Len, Tail)
+    end.
+
+gen_fields_erl(_Tab, RecordMap, Str, []) ->
+    {RecordMap, Str};
+gen_fields_erl(Name, RecordMap, Str, Fields) ->
+    V2 = "get_fields(Record) when is_record(Record, " ++ Name ++ ") ->\r\n",
+    V4 = "get_field_map(" ++ Name ++ ") ->\r\n\t#{\r\n",
+    V6 = "field_map_to_record(" ++ Name ++ ", FieldMap) ->\r\n\t#" ++ Name ++ "{\r\n",
+    {AddRecordMap, OtherStr} = gen_fields_erl(#{}, #str{}, 1, length(Fields), Fields),
+    NewV2 = V2 ++ "\t#" ++ Name ++ "{" ++ OtherStr#str.v1 ++ "\t[\r\n" ++ OtherStr#str.v2,
+    NewV4 = V4 ++ OtherStr#str.v3,
+    NewV6 = V6 ++ OtherStr#str.v4,
+    {NewRecordMap, AddStr} = gen_fields_erl(RecordMap, #str{}, maps:to_list(AddRecordMap)),
+    NewStr = Str#str{v2 = Str#str.v2 ++ NewV2, v4 = Str#str.v4 ++ NewV4, v6 = Str#str.v6 ++ NewV6},
+    {NewRecordMap, add_str(NewStr, AddStr)}.
+
+gen_fields_erl(RecordMap, Str, []) ->
+    {RecordMap, Str};
+gen_fields_erl(RecordMap, Str, [{Record, _} | Tail]) ->
+    case maps:is_key(Record, RecordMap) of
+        false ->
+            NewRecordMap0 = maps:put(Record, 1, RecordMap),
+            #table{fields = Fields} = record(Record),
+            {NewRecordMap1, AddStr} = gen_fields_erl(Record, NewRecordMap0, #str{}, Fields),
+            NewStr0 = add_str(Str, AddStr),
+            NewStr1 = #str{
+                v3 = NewStr0#str.v2 ++ NewStr0#str.v3,
+                v5 = NewStr0#str.v4 ++ NewStr0#str.v5,
+                v7 = NewStr0#str.v6 ++ NewStr0#str.v7
+            },
+            gen_fields_erl(NewRecordMap1, NewStr1, Tail);
+        _ ->
+            gen_fields_erl(RecordMap, Str, Tail)
+    end.
+
+add_str(Str0, Str1) ->
+    #str{
+        v1 = Str0#str.v1 ++ Str1#str.v1,
+        v2 = Str0#str.v2 ++ Str1#str.v2,
+        v3 = Str0#str.v3 ++ Str1#str.v3,
+        v4 = Str0#str.v4 ++ Str1#str.v4,
+        v5 = Str0#str.v5 ++ Str1#str.v5,
+        v6 = Str0#str.v6 ++ Str1#str.v6,
+        v7 = Str0#str.v7 ++ Str1#str.v7
+    }.
+
+gen_fields_erl(AddRecordMap, Str, _Count, _Len, []) ->
+    {AddRecordMap, Str};
+gen_fields_erl(AddRecordMap, Str, Count, Len, [Field | Tail]) ->
+    {NewAddRecordMap, AddStr} = gen_field_erl(Field, Count, Len, AddRecordMap),
+    gen_fields_erl(NewAddRecordMap, add_str(Str, AddStr), Count + 1, Len, Tail).
+
+gen_field_erl(Field, Count, Len, Map) ->
     #field{name = Name, type = Type, sub_type = SubType} = Field,
-    IndexStr = integer_to_list(Index),
+    IndexStr = erlang:integer_to_list(Count),
     {NewMap, SubTypeStr} = update_record_map(Type, SubType, Map),
-    TypeStr = atom_to_list(Type),
-    ReadStr = "'" ++ Name ++ "' = F" ++ IndexStr,
-    BodyStr = "\t\t#field{name = '" ++ Name ++ "', type = '" ++ TypeStr ++ "', sub_type = '" ++ SubTypeStr ++ "', value = F"++ IndexStr ++ "}",
-    MapStr = "\t\t'" ++ Name ++ "' => #field{name = '" ++ Name ++ "', type = '" ++ TypeStr ++ "', sub_type = '" ++ SubTypeStr ++ "'}",
-    ToStr = "\t\t'" ++ Name ++ "' = get_field_value('" ++ Name ++ "', FieldMap)",
-    {TReadStr, TBodyStr, TMapStr, TToStr} =
-        case Index >= Len of
+    TypeStr = erlang:atom_to_list(Type),
+    V1 = Name ++ " = F" ++ IndexStr,
+    V2 = "\t\t#field{name = " ++ Name ++ ", type = " ++ TypeStr ++ ", sub_type = " ++ SubTypeStr ++ ", value = F"++ IndexStr ++ "}",
+    V3 = "\t\t" ++ Name ++ " => #field{name = " ++ Name ++ ", type = " ++ TypeStr ++ ", sub_type = " ++ SubTypeStr ++ "}",
+    V4 = "\t\t" ++ Name ++ " = get_field_value(" ++ Name ++ ", FieldMap)",
+    {V1Tail, V2Tail, V3Tail, V4Tail} =
+        case Count < Len of
             true ->
-                {"} = Record,\n", "\n\t];\n", "\n\t};\n", "\n\t};\n"};
-            _ ->
-                {", ", ",\n", ",\n", ",\n"}
+                {", ", ",\r\n", ",\r\n", ",\r\n"};
+            false ->
+                {"} = Record,\r\n", "\r\n\t];\r\n", "\r\n\t};\r\n", "\r\n\t};\r\n"}
         end,
-    {NewMap, ReadStr ++ TReadStr, BodyStr ++ TBodyStr, MapStr ++ TMapStr, ToStr ++ TToStr}.
+    {NewMap, #str{v1 = V1 ++ V1Tail, v2 = V2 ++ V2Tail, v3 = V3 ++ V3Tail, v4 = V4 ++ V4Tail}}.
 
 update_record_map(?INT, _, Map) ->
     {Map, "undefined"};
@@ -158,45 +188,47 @@ update_record_map(Type, _, Map) ->
 %%
 create_hrl() ->
     Header = gen_hrl_header(),
-    {Body0, Body1, _} =
+    {Body0, Body1, Body2, _} =
         lists:foldr(
-            fun(TabName, {Acc0, Acc1, Acc2}) ->
-                #table{def = DefName, fields = Fields} = table(TabName),
-                Str0 = "-define(" ++ string:to_upper(DefName) ++ ", " ++ TabName ++ ").\n\n",
-                {Str1, NewAcc2} = gen_hrl_body(TabName, Fields, Acc2),
-                {Acc0 ++ Str0, Acc1 ++ Str1, NewAcc2}
-            end, {"", "", #{}}, tables()),
-    Str = Header ++ Body0 ++ Body1 ++ "\n-endif.\n",
+            fun(Name, {Acc0, Acc1, Acc2, Acc3}) ->
+                #table{fields = Fields} = table(Name),
+                Tab = "db_" ++ Name,
+                Str0 = "-define(" ++ string:to_upper(Tab) ++ ", " ++ Tab ++ ").\r\n",
+                {Str1, Str2, NewAcc3} = gen_hrl_body(Tab, Fields, Acc3),
+                {Str0 ++ Acc0, Str1 ++ Acc1, Str2 ++ Acc2, NewAcc3}
+            end, {"", "", "", #{}}, tables()),
+    Str = Header ++ Body0 ++ Body1 ++ Body2 ++ "\r\n-endif.\r\n",
     file:write_file(?HRL_DIR ++ ?MOD ++ ".hrl", unicode:characters_to_binary(Str, utf8)).
 
 gen_hrl_header() ->
     "%% -*- coding: utf-8 -*-
 %% 数据表定义, 自动创建
 -ifndef('" ++ ?MOD ++ "_HRL').
--define('" ++ ?MOD ++ "_HRL', true).\n\n
--include(\"db.hrl\").\n\n\n".
+-define('" ++ ?MOD ++ "_HRL', true).\r\n\r\n
+-include(\"db.hrl\").\r\n\r\n".
 
 
 %%
 gen_hrl_body(_Name, [], Map) ->
-    {"", Map};
+    {"", "", Map};
 gen_hrl_body(Name, Fields, Map) ->
-    Str0 = "\n-record(" ++ Name ++ ", {\n",
+    Str0 = "\r\n-record(" ++ Name ++ ", {\r\n",
     {AddMap, Str1} = gen_hrl_body(#{}, "", 1, length(Fields), Fields),
-    Str2 = Str0 ++ Str1 ++ "}).\n",
+    Str2 = Str0 ++ Str1 ++ "}).\r\n",
     {Str3, NewMap} = maps:fold(
         fun(AddName, _, {AccStr, AccMap}) ->
             case maps:is_key(AddName, AccMap) of
                 false ->
                     NewAccMap0 = maps:put(AddName, 1, AccMap),
-                    #table{fields = AddFields} = table(AddName),
-                    {Str, NewAccMap1} = gen_hrl_body(AddName, AddFields, NewAccMap0),
-                    {Str ++ AccStr, NewAccMap1};
+                    #table{fields = AddFields} = record(AddName),
+                    Record = "r_" ++ AddName,
+                    {RStr0, RStr1, NewAccMap1} = gen_hrl_body(Record, AddFields, NewAccMap0),
+                    {RStr0 ++ RStr1 ++ AccStr, NewAccMap1};
                 _ ->
                     {AccStr, AccMap}
             end
         end, {"", Map}, AddMap),
-    {Str2 ++ Str3, NewMap}.
+    {Str2, Str3, NewMap}.
 gen_hrl_body(AddMap, Str, _, _, []) ->
     {AddMap, Str};
 gen_hrl_body(AddMap, Str, Index, Len, [Field|T]) ->
@@ -206,18 +238,18 @@ gen_hrl_body(AddMap, Str, Index, Len, [Field|T]) ->
 
 %%
 gen_hrl_field(#field{name = Name, type = ?INT}, Map) ->
-    {Map, "\t" ++ Name ++ " = 0", "\n"};
+    {Map, "\t" ++ Name ++ " = 0", "\r\n"};
 gen_hrl_field(#field{name = Name, type = ?FLOAT}, Map) ->
-    {Map, "\t" ++ Name ++ " = 0.0", "\n"};
+    {Map, "\t" ++ Name ++ " = 0.0", "\r\n"};
 gen_hrl_field(#field{name = Name, type = ?STRING}, Map) ->
-    {Map, "\t" ++ Name ++ " = \"\"", "\n"};
+    {Map, "\t" ++ Name ++ " = \"\"", "\r\n"};
 gen_hrl_field(#field{name = Name, type = ?LIST, sub_type = SubType}, Map) ->
     Str = "\t" ++ Name ++ " = []",
     case SubType of
-        ?INT -> {Map, Str, "% [integer()]\n"};
-        ?FLOAT -> {Map, Str, "% [float()]\n"};
-        ?STRING -> {Map, Str, "% [string()]\n"};
-        _ -> {maps:put(SubType, 1, Map), Str, "% [#'" ++ SubType ++ "'{}]\n"}
+        ?INT -> {Map, Str, "% [integer()]\r\n"};
+        ?FLOAT -> {Map, Str, "% [float()]\r\n"};
+        ?STRING -> {Map, Str, "% [string()]\r\n"};
+        _ -> {maps:put(SubType, 1, Map), Str, "% [#r_" ++ SubType ++ "{}]\r\n"}
     end;
 gen_hrl_field(#field{name = Name, type = Type}, Map) ->
-    {maps:put(Type, 1, Map), "\t" ++ Name ++ " = undefined", "% #'" ++ Type ++ "'{}\n"}.
+    {maps:put(Type, 1, Map), "\t" ++ Name ++ " = undefined", "% #r_" ++ Type ++ "{}\r\n"}.

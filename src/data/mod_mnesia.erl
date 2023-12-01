@@ -32,12 +32,7 @@ get_pid() ->
 
 init([]) ->
     erlang:process_flag(trap_exit, true),
-    Tabs = db_table:role_tables() ++ db_table:sys_tables(),
-    lists:foreach(
-        fun(Tab) ->
-            ets:new(?CACHE(Tab), [named_table, public]),
-            ets:new(?CACHE_STATE(Tab), [named_table, public])
-        end, Tabs),
+
     erlang:send_after(30 * 1000, self(), save_cache),
     lib_server:set_server_state(?SERVER, ?SERVER_STARTING),
     {ok, #mod_mnesia_state{}}.
