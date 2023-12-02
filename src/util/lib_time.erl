@@ -1,6 +1,6 @@
-%% coding: utf-8
--module(lib_timer).
--author("weisenchang").
+%% -*- coding: utf-8 -*-
+
+-module(lib_time).
 
 -include("common.hrl").
 
@@ -28,7 +28,7 @@
 
 unix_time() ->
     {M, S, _} = erlang:timestamp(),
-    M * 1000000 + S + ?TRY_CATCH(mod_timer:get_secs(), 0).
+    M * 1000000 + S + lib_cache:get_test_secs().
 
 to_unix_time(Date) ->
     calendar:datetime_to_gregorian_seconds(Date) - calendar:datetime_to_gregorian_seconds(start_date_time()).

@@ -1,7 +1,7 @@
 @echo off
 
-set cookie=wsc
-set node=wsc@192.168.20.92
+set cookie=weisenchang
+set node=weisenchang@192.168.0.199
 
 goto wait_input
 
@@ -41,7 +41,7 @@ goto wait_input
 
 :start
     set var=
-    start werl -boot start_sasl -config ".\src\app\game_server.config" -setcookie '%cookie%' -name %node% -pa ebin -s main
+    start werl -boot start_sasl -config ./src/app/game_server -setcookie '%cookie%' -name %node% -pa ebin -s main
     goto wait_input
 
 :stop

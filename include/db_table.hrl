@@ -1,43 +1,38 @@
 %% -*- coding: utf-8 -*-
-%% 数据表定义, 自动创建
+
 -ifndef('db_table_HRL').
 -define('db_table_HRL', true).
 
+-define(DB_ROLE, db_role).
+-define(DB_ROLE_FRIEND, db_role_friend).
+-define(DB_ROLE_SHOW, db_role_show).
+-define(DB_COUNT, db_count).
 
--include("db.hrl").
-
--define(DB_DB_ROLE, db_db_role).
--define(DB_DB_ROLE_FRIEND, db_db_role_friend).
--define(DB_DB_ROLE_CACHE, db_db_role_cache).
--define(DB_DB_UID, db_db_uid).
-
--record(db_db_role, {
+-record(db_role, {
 	role_id = 0, 
 	name = "", 
 	level = 0, 
 	career = 0, 
 	exp = 0, 
-	is_online = 0, 
-	offline_tick = 0 
+	login_tick = 0, 
+	logout_tick = 0 
 }).
 
--record(db_db_role_friend, {
+-record(db_role_friend, {
 	role_id = 0, 
 	friend_list = [], % [#r_friend{}]
 	apply_list = [], % [integer()]
 	black_list = [] % [integer()]
 }).
 
--record(db_db_role_cache, {
+-record(db_role_show, {
 	role_id = 0, 
 	name = "", 
 	level = 0, 
-	career = 0, 
-	is_online = 0, 
-	offline_tick = 0 
+	career = 0 
 }).
 
--record(db_db_uid, {
+-record(db_count, {
 	key = "", 
 	value = 0 
 }).

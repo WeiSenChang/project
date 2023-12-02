@@ -1,6 +1,6 @@
-%% coding: utf-8
--module(lib_common).
--author("weisenchang").
+%% -*- coding: utf-8 -*-
+
+-module(lib_rand).
 
 -include("common.hrl").
 

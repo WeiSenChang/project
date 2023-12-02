@@ -8,46 +8,44 @@
 
 %% API
 -export([
-    get_online_map/0,
-    get_offline_map/0,
-    get_role_cache/1,
-    set_role_cache/1,
-    get_name_id_map/0,
-    get_id_name_map/0
+    get_data/1,
+    set_data/1,
+    role_login/1,
+    role_logout/1,
+    change_name/3
 ]).
 
-get_online_map() ->
-    RoleCaches = db:get_cache(?DB_ROLE_CACHE),
-    lists:foldl(
-        fun(RoleCache, Acc) ->
-            #db_role_cache{role_id = RoleId, is_online = IsOnLine} = RoleCache,
-            ?IF(IsOnLine =:= ?ONLINE, maps:put(RoleId, 1, Acc), Acc)
-        end, #{}, RoleCaches).
+get_data(RoleId) ->
+    lib_db:get(?DB_ROLE_SHOW, RoleId).
 
-get_offline_map() ->
-    RoleCaches = db:get_cache(?DB_ROLE_CACHE),
-    lists:foldl(
-        fun(RoleCache, Acc) ->
-            #db_role_cache{role_id = RoleId, is_online = IsOnLine, offline_tick = OffLineTick} = RoleCache,
-            ?IF(IsOnLine =:= ?OFFLINE, maps:put(RoleId, OffLineTick, Acc), Acc)
-        end, #{}, RoleCaches).
+set_data(RoleShow) ->
+    lib_db:set(?DB_ROLE_SHOW, RoleShow#db_role_show.role_id, RoleShow).
 
-get_name_id_map() ->
-    RoleCaches = db:get_cache(?DB_ROLE_CACHE),
-    lists:foldl(
-        fun(#db_role_cache{role_id = RoleId, name = Name}, Acc) ->
-            maps:put(Name, RoleId, Acc)
-        end, #{}, RoleCaches).
+role_login(RoleId) ->
+    OnLineRoleMap = lib_cache:get_online_role_map(),
+    OffLineRoleMap = lib_cache:get_offline_role_map(),
+    NewOnLineRoleMap = maps:put(RoleId, 1, OnLineRoleMap),
+    NewOffLineRoleMap = maps:remove(RoleId, OffLineRoleMap),
+    lib_cache:set_online_role_map(NewOnLineRoleMap),
+    lib_cache:set_offline_role_map(NewOffLineRoleMap).
 
-get_id_name_map() ->
-    RoleCaches = db:get_cache(?DB_ROLE_CACHE),
-    lists:foldl(
-        fun(#db_role_cache{role_id = RoleId, name = Name}, Acc) ->
-            maps:put(RoleId, Name, Acc)
-        end, #{}, RoleCaches).
+role_logout(RoleId) ->
+    OnLineRoleMap = lib_cache:get_online_role_map(),
+    OffLineRoleMap = lib_cache:get_offline_role_map(),
+    NewOnLineRoleMap = maps:remove(RoleId, OnLineRoleMap),
+    NewOffLineRoleMap = maps:put(RoleId, 1, OffLineRoleMap),
+    lib_cache:set_online_role_map(NewOnLineRoleMap),
+    lib_cache:set_offline_role_map(NewOffLineRoleMap).
 
-get_role_cache(Id) ->
-    db:get_cache(?DB_ROLE_CACHE, Id).
-
-set_role_cache(RoleCache) ->
-    db:set_cache(?DB_ROLE_CACHE, RoleCache#db_role_cache.role_id, RoleCache).
+change_name(RoleId, OldName, Name) ->
+    RoleNameMap = lib_cache:get_role_name_map(),
+    RoleId = maps:get(OldName, RoleNameMap),
+    case maps:is_key(Name, RoleNameMap) of
+        false ->
+            NewRoleNameMap0 = maps:remove(OldName, RoleNameMap),
+            NewRoleNameMap1 = maps:put(Name, RoleId, NewRoleNameMap0),
+            lib_cache:set_role_name_map(NewRoleNameMap1),
+            change_name_success;
+        true ->
+            change_name_fail
+    end.

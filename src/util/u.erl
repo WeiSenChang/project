@@ -1,19 +1,17 @@
-%% coding: utf-8
+%% -*- coding: utf-8 -*-
+
 -module(u).
--author("weisenchang").
 
 -include("common.hrl").
 
 -define(BEAM_PATH, "./ebin/").
 
 %% API
--export([
-    u/0
-]).
+-export([u/0]).
 
 u() ->
-    {ok, FileList} = file:list_dir(?BEAM_PATH),
-    Mods = get_change_mod(FileList),
+    {ok, Files} = file:list_dir(?BEAM_PATH),
+    Mods = get_change_mod(Files),
     Fun = fun(Mod) -> u(Mod) end,
     lists:foreach(Fun, Mods),
     ?INFO("reloads ~w", [Mods]),
@@ -23,12 +21,12 @@ u(Mod) ->
     code:purge(Mod),
     code:load_file(Mod).
 
-get_change_mod(FileList) ->
-    get_change_mod(FileList, []).
+get_change_mod(Files) ->
+    get_change_mod(Files, []).
 get_change_mod([], Mods) ->
     Mods;
 get_change_mod([File|T], Mods) ->
-    Mods1 =
+    NewMods =
     case string:tokens(File, ".") of
         [StrMod, "beam"] ->
             Mod = lib_types:to_atom(StrMod),
@@ -40,7 +38,7 @@ get_change_mod([File|T], Mods) ->
             end;
         _ -> Mods
     end,
-    get_change_mod(T, Mods1).
+    get_change_mod(T, NewMods).
 
 get_file_vsn(File) ->
     case beam_lib:version(?BEAM_PATH++File) of
