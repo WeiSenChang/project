@@ -13,4 +13,5 @@ start() ->
 
 
 stop() ->
-    ok = application:stop(server).
+    ok = application:stop(server),
+    init:stop().

@@ -45,5 +45,4 @@ get_starteds(Starteds, [Server | Tail]) ->
     get_starteds(NewStarteds, Tail).
 
 stop() ->
-    mnesia:stop(),
     ok.
