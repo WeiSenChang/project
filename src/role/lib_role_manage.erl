@@ -10,9 +10,10 @@
 -export([
     get_data/1,
     set_data/1,
+    role_create/1,
     role_login/1,
     role_logout/1,
-    change_name/3
+    role_change_name/3
 ]).
 
 get_data(RoleId) ->
@@ -20,6 +21,22 @@ get_data(RoleId) ->
 
 set_data(RoleShow) ->
     lib_db:set(?DB_ROLE_SHOW, RoleShow#db_role_show.role_id, RoleShow).
+
+role_create(Name) ->
+    RoleNameMap = lib_cache:get_role_name_map(),
+    case maps:is_key(Name, RoleNameMap) of
+        false ->
+            RoleId = lib_count:get_role_id(),
+            Role = #db_role{role_id = RoleId, name = Name},
+            lib_role:set_data(Role),
+            lib_db:save(?DB_ROLE, RoleId),
+            NewRoleNameMap = maps:put(Name, RoleId, RoleNameMap),
+            lib_cache:set_role_name_map(NewRoleNameMap),
+            {ok, RoleId};
+        true ->
+            {error, role_name_exist}
+    end.
+
 
 role_login(RoleId) ->
     OnLineRoleMap = lib_cache:get_online_role_map(),
@@ -37,7 +54,7 @@ role_logout(RoleId) ->
     lib_cache:set_online_role_map(NewOnLineRoleMap),
     lib_cache:set_offline_role_map(NewOffLineRoleMap).
 
-change_name(RoleId, OldName, Name) ->
+role_change_name(RoleId, OldName, Name) ->
     RoleNameMap = lib_cache:get_role_name_map(),
     RoleId = maps:get(OldName, RoleNameMap),
     case maps:is_key(Name, RoleNameMap) of
@@ -45,7 +62,7 @@ change_name(RoleId, OldName, Name) ->
             NewRoleNameMap0 = maps:remove(OldName, RoleNameMap),
             NewRoleNameMap1 = maps:put(Name, RoleId, NewRoleNameMap0),
             lib_cache:set_role_name_map(NewRoleNameMap1),
-            change_name_success;
+            role_change_name_success;
         true ->
-            change_name_fail
+            role_change_name_fail
     end.

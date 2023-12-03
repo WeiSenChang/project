@@ -12,6 +12,9 @@
 -define(WARING(Format), log_server:waring_msg(?MODULE, ?LINE, Format, [])).
 -define(WARING(Format, Args), log_server:waring_msg(?MODULE, ?LINE, Format, Args)).
 
+-define(ERROR(Format), log_server:error_msg(?MODULE, ?LINE, Format, [])).
+-define(ERROR(Format, Args), log_server:error_msg(?MODULE, ?LINE, Format, Args)).
+
 -define(IF(B, T, F), if B -> T; true -> F end).
 
 -endif.

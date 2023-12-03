@@ -12,10 +12,10 @@
 ]).
 
 ememory() ->
-    erlang:spawn(fun() -> etop:start([{output, text}, {lines, 10}, {sort, memory}])  end).
+    erlang:spawn(fun() -> etop:start([{output, text}, {lines, 15}, {sort, memory}])  end).
 
 ecpu() ->
-    erlang:spawn(fun() -> etop:start([{output, text}, {lines, 10}, {sort, runtime}]) end).
+    erlang:spawn(fun() -> etop:start([{output, text}, {lines, 15}, {sort, runtime}]) end).
 
 estop() ->
     etop:stop().

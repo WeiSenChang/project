@@ -46,8 +46,8 @@ handle_cast(db_init, State = #role_server_state{role_id = RoleId}) ->
     db_init(RoleId),
     lib_role_listen:listen_login(RoleId),
     {noreply, State};
-handle_cast({change_name, Name}, State = #role_server_state{role_id = RoleId}) ->
-    lib_role:change_name(RoleId, Name),
+handle_cast({role_change_name, Name}, State = #role_server_state{role_id = RoleId}) ->
+    lib_role:role_change_name(RoleId, Name),
     {noreply, State};
 handle_cast(_Request, State = #role_server_state{}) ->
     {noreply, State}.

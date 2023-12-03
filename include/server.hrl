@@ -7,6 +7,8 @@
 -define(SERVER_STARTING, 1).
 -define(SERVER_STARTED, 2).
 
+-define(SERVER, server).
+
 -define(SERVERS, [
     cache_server,
     log_server,

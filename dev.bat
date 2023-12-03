@@ -41,24 +41,24 @@ goto wait_input
 
 :start
     set var=
-    start werl -boot start_sasl -config ./src/app/game_server -setcookie '%cookie%' -name %node% -pa ebin -s main
+    start werl -boot start_sasl -config ./src/app/game_server.config -setcookie '%cookie%' -name %node% -pa ebin -s main
     goto wait_input
 
 :stop
     set var=
-    erl -noshell -setcookie '%cookie%' -name stop_%node% -pa ebin -eval "rpc:call('%node%', main, stop, []), rpc:call('%node%', init, stop, []), init:stop()"
+    start werl -setcookie %cookie% -name stop_%node% -pa ./ebin/ -eval "rpc:call('%node%', main, stop, []), init:stop()"
     goto wait_input
 
 :u
     set var=
-    erl -noshell -setcookie '%cookie%' -name stop_%node% -pa ebin -eval "rpc:call('%node%', u, u, []), init:stop()"
+    start werl -setcookie %cookie% -name stop_%node% -pa ./ebin/ -eval "rpc:call('%node%', u, u, []), init:stop()"
     goto wait_input
 
 :attach
     set var=
     set tick=%date:~0,4%%date:~5,2%%date:~8,2%%time:~0,2%%time:~3,2%%time:~6,2%
     set "tick=%tick: =%"
-    start werl -setcookie '%cookie%' -name attach_%tick%_%node% -remsh %node%
+    start werl -setcookie %cookie% -name attach_%tick%_%node% -remsh %node%
     goto wait_input
 
 :quit

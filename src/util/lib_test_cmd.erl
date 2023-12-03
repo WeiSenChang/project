@@ -39,7 +39,9 @@ role_gm("test_time", Secs, _Par2, _Par3, _Par4) ->
 role_gm("create", Num, _, _Par3, _Par4) ->
     StarTick = lib_time:unix_time(),
     ?INFO("create role start"),
-    create(Num),
+    NameMap = lib_cache:get_role_name_map(),
+    RoleIds = maps:values(NameMap),
+    create(lists:max([0 | RoleIds]), Num, 1),
     EndTick = lib_time:unix_time(),
     ?INFO("create role end, use time ~w s", [EndTick - StarTick]);
 role_gm("change_name", _Par1, _Par2, _Par3, _Par4) ->
@@ -68,20 +70,23 @@ role_gm(Gm, _Par1, _Par2, _Par3, _Par4) ->
 
 
 %% 内部函数
-create(Num) when Num =< 0 ->
+create(_Value, Num, Count) when Num =< Count ->
     ok;
-create(Num) ->
-    RoleId = lib_login:create("wsc"),
-    lib_login:login(RoleId),
-    Name = "wsc" ++ lib_types:to_list(RoleId),
-    gen_server:cast(role_server:get_pid(RoleId), {change_name, Name}),
-    create(Num - 1).
+create(Value, Num, Count) ->
+    Name = "wsc" ++ lib_types:to_list(Value + Count),
+    case lib_login:create(Name) of
+        {ok, RoleId} ->
+            lib_login:login(RoleId);
+        _Other ->
+            ?DEBUG("role create fail, info: ~w", [_Other])
+    end,
+    create(Value, Num, Count + 1).
 
 change_name([]) ->
     ok;
 change_name([{RoleId, _} | Tail]) ->
     Name = "weisenchang" ++ lib_types:to_list(RoleId),
-    gen_server:cast(role_server:get_pid(RoleId), {change_name, Name}),
+    gen_server:call(role_server:get_pid(RoleId), {role_change_name, Name}),
     change_name(Tail).
 
 

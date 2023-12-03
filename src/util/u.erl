@@ -15,7 +15,7 @@ u() ->
     Fun = fun(Mod) -> u(Mod) end,
     lists:foreach(Fun, Mods),
     ?INFO("reloads ~w", [Mods]),
-    ok.
+    Mods.
 
 u(Mod) ->
     code:purge(Mod),

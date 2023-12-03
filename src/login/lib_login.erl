@@ -4,20 +4,17 @@
 
 -include("common.hrl").
 -include("server.hrl").
--include("db_table.hrl").
--include("role.hrl").
 
 %% API
 -export([create/1, login/1, logout/1]).
 
 create(Name) ->
-    RoleId = lib_count:get_role_id(),
-    Role = #db_role{role_id = RoleId, name = Name},
-    lib_role:set_data(Role),
-    lib_db:save(?DB_ROLE, RoleId),
-    RoleId.
+    ?SERVER_STARTED = lib_cache:get_server_state(?SERVER),
+    gen_server:call(role_manage_server:get_pid(), {create_role, Name}).
 
 login(RoleId) ->
+    ?SERVER_STARTED = lib_cache:get_server_state(?SERVER),
+    logout(RoleId),
     PName = role_server:get_p_name(RoleId),
     server_sup:start_child(PName, role_server, transient, [RoleId]),
     ok.

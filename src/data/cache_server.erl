@@ -36,8 +36,6 @@ start_link() ->
 
 init([]) ->
     erlang:process_flag(trap_exit, true),
-    lib_db:db_init(),
-    lib_ets:ets_init(),
     gen_server:cast(self(), db_init),
     lib_cache:set_server_state(?MODULE, ?SERVER_STARTING),
     erlang:send_after(?LOOP_SEC * 1000, self(), loop),

@@ -38,8 +38,11 @@ init([]) ->
     lib_cache:set_server_state(?MODULE, ?SERVER_STARTING),
     {ok, #role_manage_server_state{}}.
 
-handle_call({change_name, RoleId, OldName, Name}, _From, State = #role_manage_server_state{}) ->
-    Reply = lib_role_manage:change_name(RoleId, OldName, Name),
+handle_call({create_role, Name}, _From, State = #role_manage_server_state{}) ->
+    Reply = lib_role_manage:role_create(Name),
+    {reply, Reply, State};
+handle_call({role_change_name, RoleId, OldName, Name}, _From, State = #role_manage_server_state{}) ->
+    Reply = lib_role_manage:role_change_name(RoleId, OldName, Name),
     {reply, Reply, State};
 handle_call(_Request, _From, State = #role_manage_server_state{}) ->
     {reply, ok, State}.
@@ -63,6 +66,7 @@ handle_info(_Info, State = #role_manage_server_state{}) ->
 
 terminate(_Reason, _State = #role_manage_server_state{}) ->
     lib_db:save(?DB_ROLE_SHOW),
+    online_role_map_logout(),
     ok.
 
 code_change(_OldVsn, State = #role_manage_server_state{}, _Extra) ->
@@ -88,3 +92,13 @@ get_offline_and_name_map(OffLineRoleMap, RoleNameMap, [Role | Tail]) ->
     NewOffLineRoleMap = maps:put(RoleId, 1, OffLineRoleMap),
     NewRoleNameMap = maps:put(Name, RoleId, RoleNameMap),
     get_offline_and_name_map(NewOffLineRoleMap, NewRoleNameMap, Tail).
+
+
+online_role_map_logout() ->
+    OnLineRoleMap = lib_cache:get_online_role_map(),
+    online_role_map_logout(maps:to_list(OnLineRoleMap)).
+online_role_map_logout([]) ->
+    ok;
+online_role_map_logout([{RoleId, _} | Tail]) ->
+    lib_login:logout(RoleId),
+    online_role_map_logout(Tail).
