@@ -7,8 +7,10 @@
 
 %% API
 -export([get_data/1, set_data/1]).
--export([gen_role_show/1]).
--export([role_change_name/2]).
+-export([
+    gen_role_show/1,
+    role_change_name/2
+]).
 
 get_data(RoleId) ->
     lib_db:get(?DB_ROLE, RoleId).

@@ -66,7 +66,6 @@ handle_info(_Info, State = #role_manage_server_state{}) ->
 
 terminate(_Reason, _State = #role_manage_server_state{}) ->
     lib_db:save(?DB_ROLE_SHOW),
-    online_role_map_logout(),
     ok.
 
 code_change(_OldVsn, State = #role_manage_server_state{}, _Extra) ->
@@ -92,13 +91,3 @@ get_offline_and_name_map(OffLineRoleMap, RoleNameMap, [Role | Tail]) ->
     NewOffLineRoleMap = maps:put(RoleId, 1, OffLineRoleMap),
     NewRoleNameMap = maps:put(Name, RoleId, RoleNameMap),
     get_offline_and_name_map(NewOffLineRoleMap, NewRoleNameMap, Tail).
-
-
-online_role_map_logout() ->
-    OnLineRoleMap = lib_cache:get_online_role_map(),
-    online_role_map_logout(maps:to_list(OnLineRoleMap)).
-online_role_map_logout([]) ->
-    ok;
-online_role_map_logout([{RoleId, _} | Tail]) ->
-    lib_login:logout(RoleId),
-    online_role_map_logout(Tail).

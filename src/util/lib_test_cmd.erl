@@ -86,7 +86,7 @@ change_name([]) ->
     ok;
 change_name([{RoleId, _} | Tail]) ->
     Name = "weisenchang" ++ lib_types:to_list(RoleId),
-    gen_server:call(role_server:get_pid(RoleId), {role_change_name, Name}),
+    gen_server:cast(role_server:get_pid(RoleId), {role_change_name, Name}),
     change_name(Tail).
 
 
