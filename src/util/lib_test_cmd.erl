@@ -63,10 +63,6 @@ role_gm("all_role_logout", _Par1, _Par2, _Par3, _Par4) ->
     all_role_logout(maps:to_list(OnLineMap)),
     EndTick = lib_time:unix_time(),
     ?DEBUG("role logout end, use time ~w s", [EndTick - StarTick]);
-role_gm("test", _Par1, _Par2, _Par3, _Par4) ->
-    RoleNameMap = lib_cache:get_role_name_map(),
-    Changeds = test(maps:to_list(RoleNameMap)),
-    ?DEBUG("changeds: ~w, size: ~w", [Changeds, map_size(RoleNameMap)]);
 
 
 role_gm(Gm, _Par1, _Par2, _Par3, _Par4) ->
@@ -105,15 +101,3 @@ all_role_logout([]) ->
 all_role_logout([{RoleId, _} | Tail]) ->
     lib_login:logout(RoleId),
     all_role_logout(Tail).
-
-test(List) ->
-    test(0, List).
-test(Changeds, []) ->
-    Changeds;
-test(Changeds, [{Name, _} | Tail]) ->
-    case lists:sublist(Name, 4) of
-        "test" ->
-            test(Changeds + 1, Tail);
-        _ ->
-            test(Changeds, Tail)
-    end.
