@@ -94,7 +94,7 @@ get(Tab, Key) ->
     bson_to_record(Bson, Tab).
 
 set(Tab, Key, Value) ->
-    Def = {?CACHE_NO_SAVE, 0, #{}},
+    Def = {?CACHE_NO_SAVE, lib_time:unix_time(), #{}},
     {State, Tick, Bson} = lib_ets:get(Tab, Key, Def),
     NewBson = record_to_bson(Value),
     case NewBson =/= Bson of

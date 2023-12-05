@@ -33,7 +33,7 @@ gen_role_show(RoleId) ->
 
 role_change_name(RoleId, Name) ->
     #db_role{name = OldName} = get_data(RoleId),
-    case gen_server:call(role_manage_server:get_pid(), {role_change_name, RoleId, OldName, Name}) of
+    case gen_server:call(role_manage_server:get_pid(), {role_change_name, RoleId, OldName, Name}, infinity) of
         role_change_name_success ->
             #db_role{name = OldName} = Role = get_data(RoleId),
             set_data(Role#db_role{name = Name}),

@@ -13,5 +13,6 @@ start() ->
 
 
 stop() ->
+    lib_server:stop(),
     ok = application:stop(server),
     init:stop().

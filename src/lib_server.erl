@@ -45,4 +45,13 @@ get_starteds(Starteds, [Server | Tail]) ->
     get_starteds(NewStarteds, Tail).
 
 stop() ->
+    lib_cache:set_server_state(?SERVER, ?SERVER_NO_START),
+    OnLineRoleMap = lib_cache:get_online_role_map(),
+    online_role_logout(maps:to_list(OnLineRoleMap)),
     ok.
+
+online_role_logout([]) ->
+    ok;
+online_role_logout([{RoleId, _} | Tail]) ->
+    lib_login:logout(RoleId),
+    online_role_logout(Tail).

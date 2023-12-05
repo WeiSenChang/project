@@ -12,5 +12,4 @@ start(_StartType, _StartArgs) ->
     Ret.
 
 stop(_State) ->
-    lib_server:stop(),
     ok.
