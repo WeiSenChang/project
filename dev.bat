@@ -41,7 +41,7 @@ goto wait_input
 
 :start
     set var=
-    start werl -boot start_sasl -config ./src/app/game_server.config -setcookie '%cookie%' -name %node% -pa ebin -s main
+    start werl -boot start_sasl -config ./src/app/game_server.config -setcookie %cookie% -name %node% -pa ./ebin/ -s main
     goto wait_input
 
 :stop
