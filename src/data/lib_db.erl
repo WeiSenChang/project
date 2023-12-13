@@ -16,7 +16,7 @@
 
 db_init() ->
     create_db(),
-    start_db(),
+    ok = start_db(),
     create_tabs().
 
 ets_init() ->
@@ -120,7 +120,7 @@ create_tabs() ->
     Tabs = db_table:role_tabs() ++ db_table:sys_tabs(),
     CreateTabs = lists:subtract(Tabs, HasTabs),
     create_tabs(CreateTabs),
-    mnesia:wait_for_tables(CreateTabs, 1000).
+    mnesia:wait_for_tables(CreateTabs, infinity).
 create_tabs([]) ->
     ok;
 create_tabs([Tab | Tail]) ->

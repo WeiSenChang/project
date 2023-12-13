@@ -12,14 +12,22 @@
 u() ->
     {ok, Files} = file:list_dir(?BEAM_PATH),
     Mods = get_change_mod(Files),
-    Fun = fun(Mod) -> u(Mod) end,
-    lists:foreach(Fun, Mods),
-    ?INFO("reloads ~w", [Mods]),
-    Mods.
-
-u(Mod) ->
-    code:purge(Mod),
-    code:load_file(Mod).
+    Reloads = u([], Mods),
+    io:format("reloads ~w", [Reloads]),
+    ok.
+u(Reloads, []) ->
+    lists:reverse(Reloads);
+u(Reloads, [Mod | Tail]) ->
+    try
+        code:purge(Mod),
+        code:load_file(Mod),
+        ?INFO("reload ~w", [Mod]),
+        u([Mod | Reloads], Tail)
+    catch
+        _:_ ->
+            ?WARING("reload error: ~w", [Mod]),
+            u(Reloads, Tail)
+    end.
 
 get_change_mod(Files) ->
     get_change_mod(Files, []).

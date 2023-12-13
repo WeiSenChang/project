@@ -25,7 +25,7 @@ start_server([Server | Tail]) ->
     start_server(Tail).
 
 wait_start_end(Count) ->
-    Starteds = get_starteds(),
+    Starteds = get_starteds(Count),
     case Starteds >= length(?SERVERS) of
         true ->
             lib_cache:set_server_state(?SERVER, ?SERVER_STARTED);
@@ -35,14 +35,23 @@ wait_start_end(Count) ->
     end.
 
 
-get_starteds() ->
-    get_starteds(0, ?SERVERS).
-get_starteds(Starteds, []) ->
+get_starteds(Count) ->
+    get_starteds(Count, 0, ?SERVERS).
+get_starteds(_Count, Starteds, []) ->
     Starteds;
-get_starteds(Starteds, [Server | Tail]) ->
+get_starteds(Count, Starteds, [Server | Tail]) ->
     State = lib_cache:get_server_state(Server),
-    NewStarteds = ?IF(State =:= ?SERVER_STARTED, Starteds + 1, Starteds),
-    get_starteds(NewStarteds, Tail).
+    NewStarteds =
+        case State of
+            ?SERVER_STARTED ->
+                Starteds + 1;
+            ?SERVER_STARTING ->
+                ?INFO("~w starting, ~w s", [Server, Count]),
+                Starteds;
+            _ ->
+                Starteds
+        end,
+    get_starteds(Count, NewStarteds, Tail).
 
 stop() ->
     lib_cache:set_server_state(?SERVER, ?SERVER_NO_START),
