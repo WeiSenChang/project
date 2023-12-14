@@ -1,0 +1,2 @@
+escript xlsx_to_erl.erl
+pause
