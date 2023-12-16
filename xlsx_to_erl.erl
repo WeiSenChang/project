@@ -7,7 +7,7 @@
 -define(ERL_DIR, "../server_config/").
 -define(ETS_MOD_STATE, ets_mod_state).
 -define(ETS_SHEET_STATE, ets_sheet_state).
--define(ETS_SHEET_KEY_LIST, ets_sheet_key_list).
+-define(ETS_SHEET_STR_LIST, ets_sheet_str_list).
 
 -define(LOADING, 1).
 -define(LOADED, 2).
@@ -22,7 +22,7 @@ main(_) ->
         ok ->
             ets:new(?ETS_MOD_STATE, [named_table, public]),
             ets:new(?ETS_SHEET_STATE, [named_table, public]),
-            ets:new(?ETS_SHEET_KEY_LIST, [named_table, public]),
+            ets:new(?ETS_SHEET_STR_LIST, [named_table, public]),
             {ok, Files} = file:list_dir("./"),
             xlsx_to_erl("./", Files),
             {_, Start, _} = erlang:timestamp(),
@@ -77,22 +77,12 @@ do_xlsx_to_erl_i(FileName, File) ->
 spawn_xlsx_to_erl(FileName, Mod) ->
     case zip:unzip(FileName, [memory]) of
         {ok, FileBins} ->
-            ModName = "tb_" ++ Mod,
-            ErlFileName = ?ERL_DIR ++ ModName ++ ".erl",
-            {ok, Fd} = file:open(ErlFileName, [write]),
-            ErlHeader = gen_erl_header(ModName),
-            file:write(Fd, unicode:characters_to_binary(ErlHeader, utf8)),
             V = proplists:get_value("xl/sharedStrings.xml", FileBins, undefined),
             Share = shared(V),
-            xml_to_erl(Mod, Fd, FileBins, Share, 1, []);
+            xml_to_erl(Mod, FileBins, Share, 1, []);
         _ ->
             set_mod_state(Mod, ?LOADED)
     end.
-
-gen_erl_header(RecordName) ->
-    "%% -*- coding: utf-8 -*-
--module(" ++ RecordName ++ ").\r\n
--export([get/1,get_list/0]).\r\n\r\n".
 
 shared(undefined) -> #{};
 shared(Share) ->
@@ -108,78 +98,122 @@ shared_content(#xmlText{value = Value}) -> Value;
 shared_content(#xmlElement{content = Content}) -> shared_content(Content);
 shared_content(L) -> [shared_content(T) || T <- L].
 
-xml_to_erl(Mod, Fd, FileBins, Share, Index, IdxList) ->
+xml_to_erl(Mod, FileBins, Share, Index, IdxList) ->
     SheetName = "sheet" ++ to_list(Index),
     SheetPath = "xl/worksheets/" ++ SheetName ++ ".xml",
     case proplists:get_value(SheetPath, FileBins, undefined) of
         undefined ->
-            wait_sheets(Mod, Fd, IdxList);
+            wait_sheets(Mod, IdxList);
         SheetBin ->
             set_sheet_state(Mod, Index, ?LOADING),
-            spawn(fun() -> xml_to_erl(Mod, Fd, Share, Index, SheetBin) end),
-            xml_to_erl(Mod, Fd, FileBins, Share, Index + 1, [Index | IdxList])
+            spawn(fun() -> xml_to_erl(Mod, Share, Index, SheetBin) end),
+            xml_to_erl(Mod, FileBins, Share, Index + 1, [Index | IdxList])
     end.
 
-wait_sheets(Mod, Fd, IdxList) ->
+wait_sheets(Mod, IdxList) ->
     States = [get_sheet_state(Mod, Idx) || Idx <- IdxList],
     LoadedList = [State || State <- States, State =:= ?LOADED],
     case length(LoadedList) >= length(IdxList) of
         true ->
-            KeyStrList = lists:foldr(
-                fun(Index, Acc0) ->
-                    Idx2List = get_sheet_key_list(Mod, Index),
-                    del_sheet_key_list(Mod, Index),
+            {StrList0, StrList1} = lists:foldr(
+                fun(Index, {Acc00, Acc01}) ->
+                    Idx2List = get_sheet_str_list(Mod, Index),
+                    del_sheet_str_list(Mod, Index),
                     lists:foldl(
-                        fun(Idx2, Acc1) ->
-                            List = get_sheet_key_list(Mod, {Index, Idx2}),
-                            del_sheet_key_list(Mod, {Index, Idx2}),
-                            KeyStr = string:join(List, ","),
-                            [KeyStr | Acc1]
-                        end, Acc0, Idx2List)
-                end, [], IdxList),
-            ErlTail = "get(_) ->\r\n\tundefined.\r\n\r\nget_list() ->\r\n\t[" ++ string:join(KeyStrList, ",\r\n\t") ++ "].",
-            file:write(Fd, unicode:characters_to_binary(ErlTail, utf8)),
-            file:close(Fd),
+                        fun(Idx2, {Acc10, Acc11}) ->
+                            {List0, List1} = get_sheet_str_list(Mod, {Index, Idx2}),
+                            del_sheet_str_list(Mod, {Index, Idx2}),
+                            {[string:join(List0, "\r\n")|Acc10], [string:join(List1, ",") | Acc11]}
+                        end, {Acc00, Acc01}, Idx2List)
+                end, {[], []}, IdxList),
+            ModName = "tb_" ++ Mod,
+            StrHeader = gen_erl_header(ModName),
+            StrBody = string:join(lists:reverse(StrList0), "\r\n"),
+            StrTail = "\r\nget(_) ->\r\n\tundefined.\r\n\r\nget_list() ->\r\n\t[" ++ string:join(lists:reverse(StrList1), ",") ++ "].",
+            ErlFileName = ?ERL_DIR ++ ModName ++ ".erl",
+            file:write_file(ErlFileName, unicode:characters_to_binary(StrHeader ++ StrBody ++ StrTail, utf8)),
             lists:foreach(fun(Index) -> del_sheet_state(Mod, Index) end, IdxList),
             del_mod_state(Mod),
             io:format("transform table ~ts success~n", [Mod]);
         false ->
             timer:sleep(100),
-            wait_sheets(Mod, Fd, IdxList)
+            wait_sheets(Mod, IdxList)
     end.
 
-xml_to_erl(Mod, Fd, Share, Index, SheetBin) ->
+gen_erl_header(RecordName) ->
+    "%% -*- coding: utf-8 -*-
+-module(" ++ RecordName ++ ").\r\n
+-export([get/1,get_list/0]).\r\n\r\n".
+
+xml_to_erl(Mod, Share, Index, SheetBin) ->
     {Root, _Rest} = xmerl_scan:string(binary_to_list(SheetBin)),
     SheetData = lists:keyfind(sheetData, #xmlElement.name, Root#xmlElement.content),
     AllRows = sheet_rows(SheetData#xmlElement.content, Share),
     case AllRows of
-        [_,FieldRow,TypeRow,_,LoadRow|Rows] when length(Rows) > 0 ->
-            case get_field_info(FieldRow, TypeRow, LoadRow) of
-                {#table_field{col = KeyCol, type = KeyType}, Types} when length(Types) > 0 ->
-                    xml_to_erl(Mod, Fd, Index, KeyCol, KeyType, Types, 1, [], Rows);
+        [_,FieldRow,TypeRow,Row1,Row2|Rows] when length(Rows) > 0 ->
+            Fields1 = to_fields(FieldRow, Row1, TypeRow),
+            case lists:keysort(#table_field.col, Fields1) of
+                [KeyField1|Types1] when length(Types1) > 0 ->
+                    #table_field{col = KeyCol1, type = KeyType1} = KeyField1,
+                    xml_to_erl(Mod, Index, KeyCol1, KeyType1, Types1, 1, [], Rows);
                 _ ->
-                    set_sheet_state(Mod, Index, ?LOADED)
+                    Fields2 = to_fields(FieldRow, Row2, TypeRow),
+                    case lists:keysort(#table_field.col, Fields2) of
+                        [KeyField2|Types2] when length(Types2) > 0 ->
+                            #table_field{col = KeyCol2, type = KeyType2} = KeyField2,
+                            xml_to_erl(Mod, Index, KeyCol2, KeyType2, Types2, 1, [], Rows);
+                        _ ->
+                            set_sheet_state(Mod, Index, ?LOADED)
+                    end
             end;
         _ ->
             set_sheet_state(Mod, Index, ?LOADED)
     end.
 
-xml_to_erl(Mod, _Fd, Idx1, _KeyCol, _KeyType, _Types, _Idx2, Idx2List, []) ->
+to_fields(FieldMap, LoadMap, TypeMap) ->
+    maps:fold(
+        fun(Col, Field, Acc) ->
+            FieldName = to_list(Field),
+            Load = maps:get(Col, LoadMap, <<"NULL">>),
+            LoadName = to_list(Load),
+            Type = to_list(maps:get(Col, TypeMap, <<"NULL">>)),
+            case string:str(LoadName, FieldName) > 0 of
+                true -> to_fields(Col, list_to_atom(Type), FieldName, Acc);
+                false -> Acc
+            end
+        end, [], FieldMap).
+
+to_fields(Col, int, Name, Fields) ->
+    [#table_field{col = Col, type = int, name = Name}|Fields];
+to_fields(Col, long, Name, Fields) ->
+    [#table_field{col = Col, type = int, name = Name}|Fields];
+to_fields(Col, float, Name, Fields) ->
+    [#table_field{col = Col, type = float, name = Name}|Fields];
+to_fields(Col, string, Name, Fields) ->
+    [#table_field{col = Col, type = string, name = Name}|Fields];
+to_fields(Col, json, Name, Fields) ->
+    [#table_field{col = Col, type = list, name = Name}|Fields];
+to_fields(_Col, _Type, _Name, Fields) ->
+    Fields.
+
+
+xml_to_erl(Mod, Idx1, _KeyCol, _KeyType, _Types, _Idx2, Idx2List, []) ->
     wait_sheet_index(Mod, Idx1, Idx2List);
-xml_to_erl(Mod, Fd, Idx1, KeyCol, KeyType, Types, Idx2, Idx2List, Rows) ->
+xml_to_erl(Mod, Idx1, KeyCol, KeyType, Types, Idx2, Idx2List, Rows) ->
     {LoadRows, NewRows} = case length(Rows) > ?PROCESS_MAX_ROWS of
                               true -> lists:split(?PROCESS_MAX_ROWS, Rows);
                               false -> {Rows, []}
                           end,
-    spawn(fun() -> xml_to_erl(Mod, Fd, Idx1, KeyCol, KeyType, Types, Idx2, LoadRows) end),
-    xml_to_erl(Mod, Fd, Idx1, KeyCol, KeyType, Types, Idx2 + 1, [Idx2 | Idx2List], NewRows).
+    set_sheet_state(Mod, {Idx1, Idx2}, ?LOADING),
+    spawn(fun() -> xml_to_erl(Mod, Idx1, KeyCol, KeyType, Types, Idx2, LoadRows) end),
+    xml_to_erl(Mod, Idx1, KeyCol, KeyType, Types, Idx2 + 1, [Idx2 | Idx2List], NewRows).
 
 wait_sheet_index(Mod, Idx1, Idx2List) ->
     States = [get_sheet_state(Mod, {Idx1, Idx2}) || Idx2 <- Idx2List],
     LoadedList = [State || State <- States, State =:= ?LOADED],
     case length(LoadedList) >= length(Idx2List) of
         true ->
-            set_sheet_key_list(Mod, Idx1, Idx2List),
+            set_sheet_str_list(Mod, Idx1, Idx2List),
             io:format("transform table ~ts sheet ~w success~n", [Mod, Idx1]),
             set_sheet_state(Mod, Idx1, ?LOADED);
         false ->
@@ -187,8 +221,8 @@ wait_sheet_index(Mod, Idx1, Idx2List) ->
             wait_sheet_index(Mod, Idx1, Idx2List)
     end.
 
-xml_to_erl(Mod, Fd, Idx1, KeyCol, KeyType, Types, Idx2, Rows) ->
-    {StrList0, StrList1} = lists:foldr(
+xml_to_erl(Mod, Idx1, KeyCol, KeyType, Types, Idx2, Rows) ->
+    StrList = lists:foldr(
         fun(ColMap, {Acc0, Acc1}) ->
             case maps:get(KeyCol, ColMap, null) of
                 null ->
@@ -204,73 +238,23 @@ xml_to_erl(Mod, Fd, Idx1, KeyCol, KeyType, Types, Idx2, Rows) ->
                     {[Str | Acc0], [NewKeyStr | Acc1]}
             end
         end, {[], []}, Rows),
-    SheetIdxStr = string:join(StrList0, "\r\n"),
-    file:write(Fd, unicode:characters_to_binary(SheetIdxStr ++ "\r\n", utf8)),
-    set_sheet_key_list(Mod, {Idx1, Idx2}, StrList1),
+    set_sheet_str_list(Mod, {Idx1, Idx2}, StrList),
     io:format("transform table ~ts sheet ~w index ~w success~n", [Mod, Idx1, Idx2]),
     set_sheet_state(Mod, {Idx1, Idx2}, ?LOADED).
-
-get_field_info(FieldMap, TypeMap, LoadMap) ->
-    NewTypeMap = to_type_map(TypeMap, LoadMap),
-    Fields = to_fields(FieldMap, NewTypeMap),
-    case lists:keysort(#table_field.col, Fields) of
-        [KeyField|NewFields] when length(NewFields) > 0 ->
-            {KeyField, NewFields};
-        _ ->
-            {#table_field{}, []}
-    end.
-
-to_type_map(TypeMap, LoadMap) ->
-    maps:fold(
-        fun(Col, Type, Acc) ->
-            case maps:get(Col, LoadMap, null) of
-                null -> Acc;
-                Field ->
-                    case to_list(Field) of
-                        [_|_] ->
-                            to_type_map(Col, Type, Acc);
-                        _ ->
-                            Acc
-                    end
-            end
-        end, #{}, TypeMap).
-
-to_type_map(Col, Type, TypeMap) ->
-    case Type of
-        <<"int">> ->
-            maps:put(Col, int, TypeMap);
-        <<"long">> ->
-            maps:put(Col, int, TypeMap);
-        <<"float">> ->
-            maps:put(Col, float, TypeMap);
-        <<"string">> ->
-            maps:put(Col, string, TypeMap);
-        <<"json">> ->
-            maps:put(Col, list, TypeMap);
-        _ ->
-            TypeMap
-    end.
-
-to_fields(FieldMap, TypeMap) ->
-    maps:fold(
-        fun(Col, Type, Acc) ->
-            Field = maps:get(Col, FieldMap),
-            Name = to_list(Field),
-            [#table_field{col = Col, type = Type, name = Name} | Acc]
-        end, [], TypeMap).
 
 gen_record_value_str(Types, RowDataMap) ->
     lists:foldr(
         fun(#table_field{col = Col, name = Name, type = Type}, Acc) ->
-            case maps:get(Col, RowDataMap, null) of
-                null ->
-                    Acc;
-                Value ->
-                    Str = to_str(Type, Value),
-                    NewStr = to_number_str(Type, Str),
-                    [Name ++ " => " ++ NewStr | Acc]
-            end
+            Value = maps:get(Col, RowDataMap, def(Type)),
+            Str = to_str(Type, Value),
+            NewStr = to_number_str(Type, Str),
+            [Name ++ " => " ++ NewStr | Acc]
         end, [], Types).
+
+def(int) -> "0";
+def(float) -> "0.0";
+def(string) -> "\"\"";
+def(list) -> "[]".
 
 sheet_rows(Rows, Share) ->
     [sheet_row(Share, Row) || Row <- Rows].
@@ -341,8 +325,6 @@ to_str(list, Value) ->
 to_str(_, Value) ->
     to_list(Value).
 
-to_number_str(int, Str) when length(Str) =< 0 ->
-    "0";
 to_number_str(int, Str) ->
     case string:tokens(Str, "E") of
         [V1, V2] ->
@@ -352,21 +334,24 @@ to_number_str(int, Str) ->
                 true ->
                     integer_to_list(round(list_to_float(Str)));
                 false ->
-                    Str
+                    case [S || S <- Str, S >= $0 andalso S =< $9] of
+                        [] -> "0";
+                        NewStr -> NewStr
+                    end
             end
     end;
-to_number_str(float, Str) when length(Str) =< 0 ->
-    "0.0";
 to_number_str(float, Str) ->
     case string:tokens(Str, "E") of
         [V1, V2] ->
             to_num_str(V1, V2);
         _ ->
             case lists:member($., Str) of
+                true -> Str;
                 false ->
-                    Str ++ ".0";
-                true ->
-                    Str
+                    case [S || S <- Str, S >= $0 andalso S =< $9] of
+                        [] -> "0.0";
+                        NewStr -> NewStr + ".0"
+                    end
             end
     end;
 to_number_str(_, Str) ->
@@ -428,14 +413,14 @@ set_sheet_state(Mod, Index, State) ->
 del_sheet_state(Mod, Index) ->
     del_cache(?ETS_SHEET_STATE, {list_to_atom(Mod), Index}).
 
-get_sheet_key_list(Mod, Index) ->
-    get_cache(?ETS_SHEET_KEY_LIST, {list_to_atom(Mod), Index}, []).
+get_sheet_str_list(Mod, Index) ->
+    get_cache(?ETS_SHEET_STR_LIST, {list_to_atom(Mod), Index}, []).
 
-set_sheet_key_list(Mod, Index, KeyList) ->
-    set_cache(?ETS_SHEET_KEY_LIST, {list_to_atom(Mod), Index}, KeyList).
+set_sheet_str_list(Mod, Index, KeyList) ->
+    set_cache(?ETS_SHEET_STR_LIST, {list_to_atom(Mod), Index}, KeyList).
 
-del_sheet_key_list(Mod, Index) ->
-    del_cache(?ETS_SHEET_KEY_LIST, {list_to_atom(Mod), Index}).
+del_sheet_str_list(Mod, Index) ->
+    del_cache(?ETS_SHEET_STR_LIST, {list_to_atom(Mod), Index}).
 
 %%%%%%%%%%%
 get_cache(Ets, Key, Def) ->
