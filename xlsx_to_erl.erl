@@ -25,7 +25,6 @@ main(_) ->
             ets:new(?ETS_SHEET_KEY_LIST, [named_table, public]),
             {ok, Files} = file:list_dir("./"),
             xlsx_to_erl("./", Files),
-            timer:sleep(1000),
             {_, Start, _} = erlang:timestamp(),
             wait(Start);
         _ ->
@@ -37,7 +36,7 @@ wait(Start) ->
     case ets:foldl(Fun, true, ?ETS_MOD_STATE) of
         true ->
             {_, End, _} = erlang:timestamp(),
-            io:format("transform all table end, use ~w s~n", [End - Start + 1]);
+            io:format("transform all table end, use ~w s~n", [End - Start]);
         false ->
             timer:sleep(100),
             wait(Start)
@@ -66,6 +65,7 @@ do_xlsx_to_erl_i(FileName, File) ->
         [Name, "xlsx"] ->
             case string:tokens(Name, "-") of
                 [Mod, _] ->
+                    set_mod_state(Mod, ?LOADING),
                     spawn(fun() -> spawn_xlsx_to_erl(FileName, Mod) end);
                 _ ->
                     ignore
@@ -77,7 +77,6 @@ do_xlsx_to_erl_i(FileName, File) ->
 spawn_xlsx_to_erl(FileName, Mod) ->
     case zip:unzip(FileName, [memory]) of
         {ok, FileBin} ->
-            set_mod_state(Mod, ?LOADING),
             ModName = "tb_" ++ Mod,
             ErlFileName = ?ERL_DIR ++ ModName ++ ".erl",
             {ok, Fd} = file:open(ErlFileName, [write]),
@@ -85,7 +84,7 @@ spawn_xlsx_to_erl(FileName, Mod) ->
             file:write(Fd, unicode:characters_to_binary(ErlHeader, utf8)),
             xml_to_erl(Mod, Fd, FileBin);
         _ ->
-            ignore
+            set_mod_state(Mod, ?LOADED)
     end.
 
 gen_erl_header(RecordName) ->
@@ -128,7 +127,7 @@ wait_key_list(Mod, Fd, IdxList) ->
     LoadedList = [State || State <- States, State =:= ?LOADED],
     case length(LoadedList) >= length(IdxList) of
         true ->
-            KeyStrList = lists:foldr(
+            KeyStrList = lists:foldl(
                 fun(Index, Acc0) ->
                     List = get_sheet_key_list(Mod, Index),
                     del_sheet_key_list(Mod, Index),
@@ -146,7 +145,7 @@ wait_key_list(Mod, Fd, IdxList) ->
     end.
 
 do_xml_to_erl(_Mod, _Fd, _Share, _Index, IndexList, undefined) ->
-    lists:reverse(IndexList);
+    IndexList;
 do_xml_to_erl(Mod, Fd, Share, Index, IndexList, Sheet) ->
     set_sheet_state(Mod, Index, ?LOADING),
     spawn(fun() -> spawn_sheet_xml_to_erl(Mod, Fd, Share, Index, Sheet) end),
@@ -191,7 +190,8 @@ wait_sheet_index(Mod, Idx1, IdxList) ->
                 fun(Idx2, Acc) ->
                     List = get_sheet_key_list(Mod, Idx1, Idx2),
                     del_sheet_key_list(Mod, Idx1, Idx2),
-                    KeyStr = string:join(lists:reverse(List), ","),
+                    NewList = lists:reverse(List),
+                    KeyStr = string:join(NewList, ","),
                     [KeyStr | Acc]
                 end, [], IdxList),
             set_sheet_key_list(Mod, Idx1, KeyStrList),
