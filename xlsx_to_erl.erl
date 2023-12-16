@@ -125,11 +125,11 @@ wait_sheets(Mod, Fd, IdxList) ->
     LoadedList = [State || State <- States, State =:= ?LOADED],
     case length(LoadedList) >= length(IdxList) of
         true ->
-            KeyStrList = lists:foldl(
+            KeyStrList = lists:foldr(
                 fun(Index, Acc0) ->
                     Idx2List = get_sheet_key_list(Mod, Index),
                     del_sheet_key_list(Mod, Index),
-                    lists:foldr(
+                    lists:foldl(
                         fun(Idx2, Acc1) ->
                             List = get_sheet_key_list(Mod, {Index, Idx2}),
                             del_sheet_key_list(Mod, {Index, Idx2}),
@@ -205,7 +205,7 @@ xml_to_erl(Mod, Fd, Idx1, KeyCol, KeyType, Types, Idx2, Rows) ->
             end
         end, {[], []}, Rows),
     SheetIdxStr = string:join(StrList0, "\r\n"),
-    file:write(Fd, unicode:characters_to_binary(SheetIdxStr, utf8)),
+    file:write(Fd, unicode:characters_to_binary(SheetIdxStr ++ "\r\n", utf8)),
     set_sheet_key_list(Mod, {Idx1, Idx2}, StrList1),
     io:format("transform table ~ts sheet ~w index ~w success~n", [Mod, Idx1, Idx2]),
     set_sheet_state(Mod, {Idx1, Idx2}, ?LOADED).
