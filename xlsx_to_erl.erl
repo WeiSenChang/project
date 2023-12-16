@@ -155,7 +155,7 @@ xml_to_erl(Mod, Share, Index, SheetBin) ->
             case lists:keysort(#table_field.col, Fields1) of
                 [KeyField1|Types1] when length(Types1) > 0 ->
                     #table_field{col = KeyCol1, type = KeyType1} = KeyField1,
-                    xml_to_erl(Mod, Index, KeyCol1, KeyType1, Types1, 1, [], Rows);
+                    xml_to_erl(Mod, Index, KeyCol1, KeyType1, Types1, 1, [], [Row2|Rows]);
                 _ ->
                     Fields2 = to_fields(FieldRow, Row2, TypeRow),
                     case lists:keysort(#table_field.col, Fields2) of
@@ -350,7 +350,7 @@ to_number_str(float, Str) ->
                 false ->
                     case [S || S <- Str, S >= $0 andalso S =< $9] of
                         [] -> "0.0";
-                        NewStr -> NewStr + ".0"
+                        NewStr -> NewStr ++ ".0"
                     end
             end
     end;
