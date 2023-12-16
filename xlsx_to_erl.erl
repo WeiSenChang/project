@@ -133,8 +133,7 @@ wait_sheets(Mod, Fd, IdxList) ->
                         fun(Idx2, Acc1) ->
                             List = get_sheet_key_list(Mod, {Index, Idx2}),
                             del_sheet_key_list(Mod, {Index, Idx2}),
-                            NewList = lists:reverse(List),
-                            KeyStr = string:join(NewList, ","),
+                            KeyStr = string:join(List, ","),
                             [KeyStr | Acc1]
                         end, Acc0, Idx2List)
                 end, [], IdxList),
@@ -189,7 +188,7 @@ wait_sheet_index(Mod, Idx1, Idx2List) ->
     end.
 
 xml_to_erl(Mod, Fd, Idx1, KeyCol, KeyType, Types, Idx2, Rows) ->
-    {StrList0, StrList1} = lists:foldl(
+    {StrList0, StrList1} = lists:foldr(
         fun(ColMap, {Acc0, Acc1}) ->
             case maps:get(KeyCol, ColMap, null) of
                 null ->
